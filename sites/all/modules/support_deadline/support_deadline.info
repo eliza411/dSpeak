@@ -1,0 +1,16 @@
+; $Id: support_deadline.info,v 1.1 2009/11/12 02:05:33 gengel Exp $
+name = Support Deadline
+package = Support
+description = Adds due dates and time estimates for support tickets
+dependencies[] = support
+dependencies[] = date_api
+core = 6.x
+
+
+
+; Information added by drupal.org packaging script on 2009-11-12
+version = "6.x-1.0"
+core = "6.x"
+project = "support_deadline"
+datestamp = "1257992420"
+
