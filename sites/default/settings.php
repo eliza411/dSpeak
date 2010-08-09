@@ -237,3 +237,57 @@ ini_set('url_rewriter.tags',        '');
 #   'forum'      => 'Discussion board',
 #   '@count min' => '@count minutes',
 # );
+
+/* Customization of the notification e-mails in the support module 
+ *  
+ * Supported tokens:
+ *   !username: the name of the user who is receiving the notification.
+ *   !key: the [tkt:#] format key identifying the ticket.
+ *   !update_username: the username of the user who created/updated the ticket.
+ *   !update_realname: the real name of the user who created/updated the ticket if
+ *                     defined, otherwise it will display the username.
+ *   !site: the name of your website.
+ *   !client_name: the name of the client the ticket is assigned to
+ *   !client_path: the path name of the client the ticket is assigned to
+ *   !uri: the fully qualified base path to your website.
+ *   !uri_brief: The base path to your website without http:// or https://.
+ *   !mailto: The email address receiving the notification.
+ *   !date: A 'medium' formatted timestamp of the current time.
+ *   !ticket_subject: The new or updated ticket subject.
+ *   !ticket_body: The body of the new ticket.
+ *   !ticket_url: The URL of a newly created ticket.
+ *   !update_url: The URL of a specific ticket update.
+ *   !update: The body of a ticket update.
+ *   !state: The state of the ticket (new and old if changed).
+ *   !priority: The priority of the ticket (new and old if changed).
+ *   !assigned_username: the username of the user who the ticket is assigned to.
+ *   !assigned_realname: the real name of the user who the ticket is assigned to if
+ *                       defined, otherwise it will display the username.
+ *   !unsubscribe_ticket: A url for unsubscribing for the current ticket.
+ *   !unsubscribe_all: A url for unsubscribing from all tickets.
+ */
+
+$conf['support_mail_ticket_new_subject'] = '[!site] !key !ticket_subject';
+$conf['support_mail_ticket_comment_new_subject'] = '[!site] !key !ticket_subject';
+
+$conf['support_mail_ticket_new_body'] = 
+  "!ticket_body\n".
+  "\n".
+  " -- !update_username\n".
+  "\n".
+  "State: !state\n".
+  "Priority: !priority\n".
+  "Update ticket at: !ticket_url\n".
+  "\n".
+  "\n";
+
+$conf['support_mail_ticket_comment_new_body'] = 
+  "!update\n".
+  "\n".
+  " -- !update_username \n".
+  "\n".
+  "State: !state\n".
+  "Priority: !priority\n".
+  "Update ticket at: !ticket_url\n".
+  "\n".
+  "\n";
