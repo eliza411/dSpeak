@@ -112,8 +112,6 @@ function support_deadline_comment(&$comment, $op) {
       }
       break;
     case 'view':
-      drupal_add_css(drupal_get_path('module', 'support_deadline') .'/support-deadline.css');
-      drupal_add_css(drupal_get_path('module', 'support') .'/support-tickets.css');
       support_deadline_comment_view($comment);
       break;
   }
@@ -130,17 +128,17 @@ function support_deadline_comment_view(&$comment) {
   $current = db_fetch_object(db_query('SELECT deadline, hours_estimate, hours_actual FROM {support_deadline_ticket_comment} WHERE cid = %d', $comment->cid));
   
   if ($deadline != $current->deadline) {
-    $comment->comment = '<div class="support-deadline">'. t('Due Date') .': '. ($deadline ? format_date($deadline, 'custom', 'm/j/Y') : '') .' -> '. ($current->deadline ? format_date($current->deadline, 'custom', 'm/j/Y') : '') ."</div>\n". $comment->comment;
+    $comment->comment = '<div class="support-deadline support-field"><span class="support-label">'. t('Due Date') .':</span> <span class="support-value previous">'. ($deadline ? format_date($deadline, 'custom', 'm/j/Y') : '') .'</span> &rarr; <span class="support-value current">'. ($current->deadline ? format_date($current->deadline, 'custom', 'm/j/Y') : '') ."</span></div>\n". $comment->comment;
     $deadline = $current->deadline;
   }
 
   if ($hours_estimate != $current->hours_estimate) {
-    $comment->comment = '<div class="support-hours-estimate">'. t('Hours Estimate') .': '. $hours_estimate .' -> '. $current->hours_estimate ."</div>\n" . $comment->comment;
+    $comment->comment = '<div class="support-hours-estimate support-field"><span class="support-label">'. t('Hours Estimate') .':</span> <span class="support-value previous">'. $hours_estimate .'</span> &rarr; <span class="support-value current">'. $current->hours_estimate ."</span></div>\n" . $comment->comment;
     $hours_estimate = $current->hours_estimate;
   }
 
   if ($hours_actual != $current->hours_actual) {
-    $comment->comment = '<div class="support-hours-actual">'. t('Hours Actual') .': '. $hours_actual .' -> '. $current->hours_actual ."</div>\n" . $comment->comment;
+    $comment->comment = '<div class="support-hours-actual support-field"><span class="support-label">'. t('Hours Actual') .':</span> <span class="support-value previous">'. $hours_actual .'</span> &rarr; <span class="support-value current">'. $current->hours_actual ."</span></div>\n" . $comment->comment;
     $hours_actual = $current->hours_actual;
   }
 
