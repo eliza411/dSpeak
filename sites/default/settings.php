@@ -270,16 +270,15 @@ ini_set('url_rewriter.tags',        '');
 $conf['support_mail_ticket_new_subject'] = '[!site] !key !ticket_subject';
 $conf['support_mail_ticket_comment_new_subject'] = '[!site] !key !ticket_subject';
 
-$conf['support_mail_ticket_new_body'] = 
+$conf['support_mail_ticket_new_body'] =
+  "!key !ticket_subject\n". 
   "!ticket_body\n".
   "\n".
   " -- !update_username\n".
   "\n".
   "State: !state\n".
   "Priority: !priority\n".
-  "Update ticket at: !ticket_url\n".
-  "\n".
-  "\n";
+  "Update ticket at: !ticket_url\n";
 
 $conf['support_mail_ticket_comment_new_body'] = 
   "!update\n".
@@ -288,6 +287,4 @@ $conf['support_mail_ticket_comment_new_body'] =
   "\n".
   "State: !state\n".
   "Priority: !priority\n".
-  "Update ticket at: !ticket_url\n".
-  "\n".
-  "\n";
+  "Update ticket at: !ticket_url\n";

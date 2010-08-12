@@ -1,5 +1,10 @@
 <?php
-// $Id: taxonomy_defaults.admin.inc,v 1.1.2.4 2008/12/20 18:11:52 sleepcamel Exp $
+// $Id: taxonomy_defaults.admin.inc,v 1.1.2.12 2010/04/18 22:53:52 sleepcamel Exp $
+
+/**
+ * @file
+ * Administration forms for the taxonomy_defaults module
+ */
 
 /**
  * Defines the page at admin/content/taxonomy/taxonomy_defaults.
@@ -8,73 +13,113 @@ function taxonomy_defaults_form() {
   // For each node type we generate per vocabulary a checkbox & term select.
   $form['#tree'] = TRUE;
   $vocabularies = taxonomy_get_vocabularies();
+
   foreach (node_get_types() as $type => $name) {
     $type_vocabularies = taxonomy_get_vocabularies($type);
     // Loop over all vocabularies
     foreach ($vocabularies as $vid => $vocab) {
       $activevocab = array_key_exists($vid, $type_vocabularies);
-      $form[$type][$vid]['active'] = array(
-        '#type' => 'checkbox',
-        '#default_value' => variable_get("taxdef_{$type}_{$vid}_active", FALSE),
-        '#weight' => -16,
-      );
-      $form[$type][$vid]['name'] = array('#value' => t( $vocab->name ) );
 
-      if ($vocab->tags) {
-        $form[$type][$vid]['tags'] = array('#type' => 'textfield',
-       /*   '#title' => $vocabulary->name,
-          '#description' => $help,
-          '#required' => $vocabulary->required,
-          '#default_value' => $typed_string,*/
-          '#autocomplete_path' => 'taxonomy/autocomplete/'. $vocabulary->vid,
-          '#weight' => $vocabulary->weight,
-          '#maxlength' => 255,
+      if ($activevocab) {
+        $form[$type][$vid]['hide_vocab'] = array(
+          '#type' => 'checkbox',
+          '#default_value' => !variable_get("taxdef_{$type}_{$vid}_visible", TRUE),
+          '#weight' => -16,
         );
-      } else {
-        $form[$type][$vid]['select'] = taxonomy_form($vid, variable_get("taxdef_{$type}_{$vid}", 0));
+        $form[$type][$vid]['name'] = array('#value' => t($vocab->name));
+
+        // If the vocabulary stores tags, add an autocomplete field for it.
+        if ($vocab->tags) {
+          $stored_terms = variable_get("taxdef_{$type}_{$vid}", array());
+          $stored_tags = array();
+
+          foreach ( $stored_terms as $tid ) {
+            $term = taxonomy_get_term($tid);
+            if ( $term )
+              $stored_tags[] = $term->name;
+          }
+          $stored_tags = drupal_implode_tags($stored_tags);
+          $form[$type][$vid]['tags'] = array(
+            '#type' => 'textfield',
+            '#description' => "Begin typing",
+            '#default_value' => $stored_tags,
+            '#autocomplete_path' => 'taxonomy/autocomplete/'. $vocab->vid,
+            '#maxlength' => 255,
+          );
+        }
+        // Other vocabularies get added as normal selectors.
+        else {
+          $form[$type][$vid]['select'] = taxonomy_form($vid, variable_get("taxdef_{$type}_{$vid}", 0));
+        }
       }
-      $form[$type][$vid]['tip'] = array('#value' => $activevocab ? '' : '<p>'. t('The <strong>!vocab</strong> vocabulary is not enabled for the <strong>!type</strong> content type. Default terms will be added to the content without appearing on the add and edit pages.</p>', array('!vocab'=>$vocab->name, '!type'=>$name->name) ) );
+      else {
+        if (variable_get("taxdef_{$type}_{$vid}", FALSE)) {
+          drupal_set_message(t("Taxonomy Defaults were detected for the @vocab vocabulary on the @type content type, but @type is not selected in @vocab !settings. !details.", array('@vocab' => $vocab->name, '@type' => $type, '!settings' => l('settings', '/admin/content/taxonomy/edit/vocabulary/'. $vid), '!details' => l('Explanation', 'http://drupal.org/node/559828#comment-2162950'))), "warning");
+        }
+      }
     }
-    if (count($vocabularies) > 0) {
-      $form['buttons']['submit'] = array('#type' => 'submit', '#value' => t('Save configuration') );
-      $form['buttons']['reset'] = array('#type' => 'submit', '#value' => t('Reset to defaults') );
-    }
-    else {
-      $form['text'] = array(
-        '#value' => t('Before you can assign default terms to node types, go to !link to create and fill vocabularies.', array('!link' => l(t('add vocabulary'), 'admin/content/taxonomy/add/vocabulary'))),
-      );
-    }
+  }
+  if (count($vocabularies) > 0) {
+    $form['buttons']['submit'] = array('#type' => 'submit', '#value' => t('Save configuration') );
+    $form['buttons']['reset'] = array('#type' => 'submit', '#value' => t('Reset to defaults') , '#submit' => array('taxonomy_defaults_reset_submit'));
+  }
+  else {
+    $form['text'] = array(
+      '#value' => t('Before you can assign default terms to node types, go to !link to create and fill vocabularies.', array('!link' => l(t('add vocabulary'), 'admin/content/taxonomy/add/vocabulary'))),
+    );
   }
   return $form;
 }
 
+/**
+ * Clear all settings in the variable table
+ */
+function taxonomy_defaults_reset_submit($form, &$form_state) {
+  foreach (node_get_types() as $type => $name) {
+    foreach ($form_state['values'][$type] as $vid => $values) {
+      _taxonomy_defaults_clear_settings($type, $vid);
+    }
+  }
+  drupal_set_message(t('The configuration options have been reset to their default values.'));
+}
 
 /**
  * Store settings in the variable table.
  */
 function taxonomy_defaults_form_submit($form, &$form_state) {
-  $op = $form_state['clicked_button']['op'];
-
-  if ($op == t('Reset to defaults')) {
-    foreach (node_get_types() as $type => $name) {
-      foreach ($form_state['values'][$type] as $vid => $values) {
-        variable_del("taxdef_{$type}_{$vid}_active");
-        variable_del("taxdef_{$type}_{$vid}");
-      }
-    }
-    drupal_set_message(t('The configuration options have been reset to their default values.'));
-  }
-  else {
-    foreach (node_get_types() as $type => $name) {
-      foreach ($form_state['values'][$type] as $vid => $values) {
-        variable_set("taxdef_{$type}_{$vid}_active", $values['active']);
-        if ($values['active']) {
-          variable_set("taxdef_{$type}_{$vid}", is_array($values['select']) ? $values['select'] : array($values['select']));
+  foreach (node_get_types() as $type => $name) {
+    if (is_array($form_state['values'][$type])) {foreach ($form_state['values'][$type] as $vid => $values) {
+      variable_set("taxdef_{$type}_{$vid}_visible", !$values['hide_vocab']);
+      if (isset($values['tags'])) {
+        $typed_input = $values['tags'];
+        $typed_terms = drupal_explode_tags($typed_input);
+        $inserted = array();
+        foreach ($typed_terms as $typed_term) {
+          // See if the term exists in the chosen vocabulary
+          // and return the tid; otherwise, add a new record.
+          $possibilities = taxonomy_get_term_by_name($typed_term);
+          $typed_term_tid = NULL;  // tid match, if any.
+          foreach ($possibilities as $possibility) {
+            if ($possibility->vid == $vid) {
+              $typed_term_tid = $possibility->tid;
+            }
+          }
+          if ($typed_term_tid) {
+            $inserted[] = $typed_term_tid;
+          }
+          else {
+            drupal_set_message(t("'@term' does not exist.", array('@term' => $typed_term, '@vocab' => $vid)), 'warning');
+          }
         }
+        variable_set("taxdef_{$type}_{$vid}", $inserted);
+      }
+      else {
+        variable_set("taxdef_{$type}_{$vid}", is_array($values['select']) ? $values['select'] : array($values['select']));
       }
     }
-    drupal_set_message(t('The configuration options have been saved.'));
   }
+}
+  drupal_set_message(t('The configuration options have been saved.'));
 }
 
 /**
@@ -82,32 +127,41 @@ function taxonomy_defaults_form_submit($form, &$form_state) {
  */
 function theme_taxonomy_defaults_form($form) {
   drupal_add_css(drupal_get_path('module', 'taxonomy_defaults') .'/taxonomy_defaults.css', 'module', 'all', FALSE);
- 
   $output = '';
 
   foreach (node_get_types() as $type => $name) {
-    $rowcount = 0;
-    foreach (element_children($form[$type]) as $key) {
-      $form[$type][$key]['select']['#title']='';
+    if (isset($form[$type]) ) {
+      $rowcount = 0;
+      foreach (element_children($form[$type]) as $key) {
+        $form[$type][$key]['select']['#title']='';
 
-      $vocabtable[$rowcount][] = drupal_render($form[$type][$key]['name']);
-      $vocabtable[$rowcount][] = drupal_render($form[$type][$key]['active']);
-      $vocabtable[$rowcount][] = drupal_render($form[$type][$key]['select']);
-      $vocabtable[$rowcount][] = array( 'data' => drupal_render($form[$type][$key]['tip']) );
-      $rowcount++;
+        $vocabtable[$rowcount][] = drupal_render($form[$type][$key]['name']);
+        $vocabtable[$rowcount][] = drupal_render($form[$type][$key]['hide_vocab']);
+        // Add the term selector - tags autocomplete field.
+        if (isset($form[$type][$key]['tags'])) {
+          $vocabtable[$rowcount][] = drupal_render($form[$type][$key]['tags']);
+        }
+        // Add the term selector - standard selector.
+        else {
+          $vocabtable[$rowcount][] = drupal_render($form[$type][$key]['select']);
+        }
+
+        $rowcount++;
+      }
+      if ($rowcount) {
+        $subtable = theme('table', array(t('Vocabulary'), t('Hide'), t('Default Terms')), $vocabtable);
+
+        $fieldset = array(
+          '#title' => $name->name,
+          '#collapsible' => TRUE,
+          '#collapsed' => TRUE,
+          '#value' => $subtable,
+        );
+
+        $output .= theme('fieldset', $fieldset);
+      }
     }
-    $subtable = theme('table', array(t('Vocabulary'),t('Enabled'),t('Default Terms'), t('Notes')), $vocabtable);
     unset($vocabtable);
-
-    $fieldset = array(
-      '#title' => $name->name,
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#value' => $subtable,
-    );
-
-    $output .= theme('fieldset', $fieldset);
-
   }
 
   // Render remaining fields

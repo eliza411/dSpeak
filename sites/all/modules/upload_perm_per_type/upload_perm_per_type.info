@@ -1,0 +1,12 @@
+; $Id: upload_perm_per_type.info,v 1.2 2009/05/22 13:59:23 daveingram Exp $
+name = Upload Permissions Per Content Type
+description = Allows you to restrict access to the upload form, per role, per content type.
+dependencies[] = upload
+core = 6.x
+
+; Information added by drupal.org packaging script on 2009-05-22
+version = "6.x-1.0-beta1"
+core = "6.x"
+project = "upload_perm_per_type"
+datestamp = "1243001513"
+

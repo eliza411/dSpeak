@@ -1,5 +1,5 @@
 <?php
-// $Id: taxonomy_defaults.module,v 1.11.2.3.2.4 2008/12/04 04:20:44 sleepcamel Exp $
+// $Id: taxonomy_defaults.module,v 1.11.2.3.2.15 2010/04/18 23:41:32 sleepcamel Exp $
 
 /**
  * @file
@@ -15,15 +15,23 @@
 function taxonomy_defaults_help($path, $arg) {
   switch ($path) {
     case 'admin/content/taxonomy/taxonomy_defaults':
-      $output  = '<p>'. t("Below you may select default terms for each content type. Check the 'Enabled' box next to the vocabulary, then select the terms.") .'</p>' ;
+      $output  = '<p>'. t("Below you may select default terms for each content type. Checking the 'Hide' checkbox to hide the vocabulary on the node creation form while still applying the default terms.") .'</p>' ;
       return $output;
   }
 }
 
 /**
+ * Implementation of hook_perm().
+ *
+ */
+function taxonomy_defaults_perm() {
+  return array('administer taxonomy defaults');
+}
+
+/**
  * Define a custom callback to assign default terms menu at a tab on admin/taxonomy.
  *
- * Implementation of hook_menu.
+ * Implementation of hook_menu().
  */
 function taxonomy_defaults_menu() {
   $items['admin/content/taxonomy/taxonomy_defaults'] = array(
@@ -31,14 +39,14 @@ function taxonomy_defaults_menu() {
     'title' => 'Default terms',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('taxonomy_defaults_form'),
-    'access arguments' => array('administer site configuration'),
+    'access arguments' => array('administer taxonomy defaults'),
     'file' => 'taxonomy_defaults.admin.inc',
   );
   return $items;
 }
 
 /**
- * Implementation of hook_theme.
+ * Implementation of hook_theme().
  *
  * @return unknown
  */
@@ -54,21 +62,55 @@ function taxonomy_defaults_theme() {
 
 /**
  * Adds the defaults for active vocabularies as preselected terms to '$node->taxonomy'
- * This requires a weight lower than taxonomy.module.
+ * This requires a weight higher than taxonomy.module.
  */
 function taxonomy_defaults_form_alter(&$form, &$form_state, $form_id) {
   // Only alter node forms
-  if (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id && !isset($form_state['node_preview'])) {
+  if (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
     $node = $form['#node'];
-    // Do not preselect terms on nodes that already have been edited
-    if (!isset($node->nid)) {
       // Add the default 'pre-selected' terms to $node->taxonomy
-      foreach (taxonomy_get_vocabularies($node->type) as $vid => $vocab) {
-        if (variable_get("taxdef_{$node->type}_{$vid}_active", FALSE)) {
-          $default_tids = variable_get("taxdef_{$node->type}_{$vid}", array());
-          foreach ($default_tids as $default_tid) {
-            $term = taxonomy_get_term($default_tid);
-            $form['#node']->taxonomy[$default_tid] = $term;
+    foreach (taxonomy_get_vocabularies($node->type) as $vid => $vocab) {
+      $default_tids = variable_get("taxdef_{$node->type}_{$vid}", array());
+      $visible = variable_get("taxdef_{$node->type}_{$vid}_visible", array());
+
+      if ($vocab->tags) {
+        // for freetag vocabs, build an array of terms and convert to a string
+        $terms = array();
+        foreach ($default_tids as $tid) {
+          $terms[] = taxonomy_get_term($tid);
+        }
+        $typed_string = taxonomy_implode_tags($terms, $vid);
+
+        if ($visible) {
+          // Do not preselect terms on nodes that already have been edited
+          if (!isset($node->nid)) {
+            $form['taxonomy']['tags'][$vid]['#default_value'] = $typed_string;
+          }
+        }
+        else {
+          $form['taxonomy']['tags'][$vid]['#type'] = 'value';
+          unset($form['taxonomy'][$vid]['#theme']);
+
+          // Do not preselect terms on nodes that already have been edited
+          if (!isset($node->nid)) {
+            $form['taxonomy']['tags'][$vid]['#value'] = $typed_string;
+          }
+        }
+      }
+      else {
+        if ($visible) {
+          // Do not preselect terms on nodes that already have been edited
+          if (!isset($node->nid)) {
+            $form['taxonomy'][$vid]['#default_value'] = $default_tids;
+          }
+        }
+        else {
+          $form['taxonomy'][$vid]['#type'] = 'value';
+          unset($form['taxonomy'][$vid]['#theme']);
+
+          // Do not preselect terms on nodes that already have been edited
+          if (!isset($node->nid)) {
+            $form['taxonomy'][$vid]['#value'] = $default_tids;
           }
         }
       }
@@ -76,23 +118,39 @@ function taxonomy_defaults_form_alter(&$form, &$form_state, $form_id) {
   }
 }
 
+function _taxonomy_defaults_clear_settings($type, $vid) {
+  variable_del("taxdef_{$type}_{$vid}_visible");
+  variable_del("taxdef_{$type}_{$vid}");
+}
+
 /**
- * Adds selected default terms from non-active vocabularies to newly created nodes
+ * Implementation of hook_taxonomy().
+ *
+ * Clean up taxonomy default settings on deletion of a taxonomy vocabulary
  */
-function taxonomy_defaults_nodeapi(&$node, $op, $teaser = NULL, $page = NULL) {
-  if ($op == 'presave') {
-    $taxonomy = $node->taxonomy;
-    $type_vocabularies = taxonomy_get_vocabularies($node->type);
-    foreach (taxonomy_get_vocabularies() as $vid => $vocab) {
-      $activevocab = array_key_exists($vid, $type_vocabularies);
-      // Active vocabs have been inserted via the form already and may have been modified by the user
-      if (!$activevocab && variable_get("taxdef_{$node->type}_{$vid}_active", FALSE)) {
-        $default_tids = variable_get("taxdef_{$node->type}_{$vid}", array());
-        $taxonomy[$vid] = $vocab->multiple ? $default_tids : $default_tids[0];
+function taxonomy_defaults_taxonomy($op, $type, $args = NULL) {
+  if ($op == 'delete') {
+    if ($type == 'vocabulary') {
+      $vid = $args['vid'];
+      foreach (node_get_types() as $type => $name) {
+        _taxonomy_defaults_clear_settings($type, $vid);
       }
     }
-    if (isset($taxonomy)) {
-      $node->taxonomy = $taxonomy;
+    elseif ($type == 'term') {
+      //todo - search all taxdef settings and delete this term. maybe not worth the effort?
+    }
+  }
+}
+
+/**
+ * Implementation of hook_node_type().
+ *
+ * Clean up taxonomy default settings on deletion of a content type
+ */
+function taxonomy_defaults_node_type($op, $args = NULL) {
+  if ($op == 'delete') {
+    foreach (taxonomy_get_vocabularies() as $vid => $vocab) {
+      _taxonomy_defaults_clear_settings($args->type, $vid);
     }
   }
 }

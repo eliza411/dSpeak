@@ -7,9 +7,9 @@ dependencies[] = content
 dependencies[] = filefield
 dependencies[] = video
 package = "Video"
-; Information added by drupal.org packaging script on 2010-07-31
-version = "6.x-4.0-rc8"
+; Information added by drupal.org packaging script on 2010-08-09
+version = "6.x-4.0-rc9"
 core = "6.x"
 project = "video"
-datestamp = "1280542576"
+datestamp = "1281365477"
 
