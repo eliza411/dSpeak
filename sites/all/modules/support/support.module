@@ -810,19 +810,19 @@ function support_comment_view(&$comment) {
   if (!empty($current) && $assigned != $current->assigned) {
     $previous_account = user_load(array('uid' => $assigned));
     $current_account = user_load(array('uid' => $current->assigned));
-    $comment->comment = '<div class="support-assigned">'. t('Assigned') .': '. ($previous_account->name ? $previous_account->name : '<em>'. t('unassigned') .'</em>') .' -> '. ($current_account->name ? $current_account->name : '<em>'. t('unassigned') .'</em>') ."</div>\n". $comment->comment;
+    $comment->comment = '<div class="support-assigned support-field"><span class="support-label">'. t('Assigned') .':</span> <span class="support-value previous">'. ($previous_account->name ? $previous_account->name : '<em>'. t('unassigned') .'</em>') .'</span> &rarr; <span class="support-value current">'. ($current_account->name ? $current_account->name : '<em>'. t('unassigned') .'</em>') ."</span></div>\n". $comment->comment;
     $assigned = $current->assigned;
   }
   if (!empty($current) && $client != $current->client) {
-    $comment->comment = '<div class="support-client">'. t('Client') .': '. _support_client($client) .' -> '. _support_client($current->client) ."</div>\n". $comment->comment;
+    $comment->comment = '<div class="support-client support-field"><span class="support-label">'. t('Client') .':</span> <span class="support-value previous">'. _support_client($client) .'</span> &rarr; <span class="support-value current">'. _support_client($current->client) ."</span></div>\n". $comment->comment;
     $client = $current->client;
   }
   if (!empty($current) && $state != $current->state) {
-    $comment->comment = '<div class="support-state">'. t('State') .': '. _support_state($state) .' -> '. _support_state($current->state) ."</div>\n" . $comment->comment;
+    $comment->comment = '<div class="support-state support-field"><span class="support-label">'. t('State') .':</span> <span class="support-value previous">'. _support_state($state) .'</span> &rarr; <span class="support-value current">'. _support_state($current->state) ."</span></div>\n" . $comment->comment;
     $state = $current->state;
   }
   if (!empty($current) && $priority != $current->priority) {
-    $comment->comment = '<div class="support-priority">'. t('Priority') .': '. _support_priorities($priority) .' -> '. _support_priorities($current->priority) ."</div>\n" . $comment->comment;
+    $comment->comment = '<div class="support-priority support-field"><span class="support-label">'. t('Priority') .':</span> <span class="support-value previous">'. _support_priorities($priority) .'</span> &rarr; <span class="support-value current">'. _support_priorities($current->priority) ."</span></div>\n" . $comment->comment;
     $priority = $current->priority;
   }
 }
