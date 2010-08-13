@@ -75,7 +75,7 @@
 
 .support-value {
   display: inline-block;
-  width: 6em;
+  min-width: 6em;
 }
 
 .support-field .previous {
