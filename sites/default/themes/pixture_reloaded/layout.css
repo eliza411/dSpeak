@@ -222,14 +222,16 @@ div#site-name {
 .clear { clear:both; }
 
 /*-------------------------------------------------------------------*/
-/*                             Clearing                              */
+/*                          Support Fields                           */
 /*-------------------------------------------------------------------*/
-#comment-form fieldset > .form-item {
+#comment-form fieldset > .form-item,
+#node-form fieldset > .form-item {
   min-width: 21.5em;
   display: inline-block;
   margin: 5px;
 }
-#comment-form fieldset > .form-item label {
+#comment-form fieldset > .form-item label,
+#node-form fieldset > .form-item label {
   min-width: 6em;
   display: inline-block;
 }
