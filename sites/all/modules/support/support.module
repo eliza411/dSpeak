@@ -833,7 +833,7 @@ function support_comment_view(&$comment) {
 function support_mail($key, &$message, $params) {
   $language = $message['language'];
   $variables = support_mail_tokens($params['account'], $language, $params['nid'], (isset($params['comment']) ? $params['comment'] : array()), $params['suppress']);
-  $message['subject'] .= _support_mail_text($key .'_subject', $language, $variables, $params['integrate_email']);
+  $message['subject'] .= decode_entities(_support_mail_text($key .'_subject', $language, $variables, $params['integrate_email']));
   $message['body'] = _support_mail_text($key .'_body', $language, $variables, $params['integrate_email']);
   $node = node_load($params['nid']);
   $client = support_client_load($node->client);
