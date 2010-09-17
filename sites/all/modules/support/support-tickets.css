@@ -61,25 +61,29 @@
 }
 
 /* Theme ticket status/priority/client/assigned changes. */
-.support-field {
+.support-state {
   padding: 3px;
   padding-left: 16px;
   background: #edf4f9;
   font-size: .85em;
 }
-
-.support-label {
-  display: inline-block;
-  width: 7em;
+.support-priority {
+  padding: 3px;
+  padding-left: 16px;
+  background: #edf4f9;
+  font-size: .85em;
 }
-
-.support-value {
-  display: inline-block;
-  min-width: 6em;
+.support-client {
+  padding: 3px;
+  padding-left: 16px;
+  background: #edf4f9;
+  font-size: .85em;
 }
-
-.support-field .previous {
-  text-align: right;
+.support-assigned {
+  padding: 3px;
+  padding-left: 16px;
+  background: #edf4f9;
+  font-size: .85em;
 }
 
 /* Theme ticket id in ticket listing. */

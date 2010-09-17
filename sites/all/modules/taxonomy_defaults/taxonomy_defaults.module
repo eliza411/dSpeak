@@ -1,5 +1,5 @@
 <?php
-// $Id: taxonomy_defaults.module,v 1.11.2.3.2.15 2010/04/18 23:41:32 sleepcamel Exp $
+// $Id: taxonomy_defaults.module,v 1.11.2.3.2.11 2009/10/18 06:19:35 sleepcamel Exp $
 
 /**
  * @file
@@ -66,7 +66,7 @@ function taxonomy_defaults_theme() {
  */
 function taxonomy_defaults_form_alter(&$form, &$form_state, $form_id) {
   // Only alter node forms
-  if (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
+  if (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id && !isset($form_state['node_preview'])) {
     $node = $form['#node'];
       // Add the default 'pre-selected' terms to $node->taxonomy
     foreach (taxonomy_get_vocabularies($node->type) as $vid => $vocab) {
@@ -86,8 +86,7 @@ function taxonomy_defaults_form_alter(&$form, &$form_state, $form_id) {
           if (!isset($node->nid)) {
             $form['taxonomy']['tags'][$vid]['#default_value'] = $typed_string;
           }
-        }
-        else {
+        } else {
           $form['taxonomy']['tags'][$vid]['#type'] = 'value';
           unset($form['taxonomy'][$vid]['#theme']);
 
@@ -103,11 +102,10 @@ function taxonomy_defaults_form_alter(&$form, &$form_state, $form_id) {
           if (!isset($node->nid)) {
             $form['taxonomy'][$vid]['#default_value'] = $default_tids;
           }
-        }
-        else {
+        } else {
           $form['taxonomy'][$vid]['#type'] = 'value';
           unset($form['taxonomy'][$vid]['#theme']);
-
+          
           // Do not preselect terms on nodes that already have been edited
           if (!isset($node->nid)) {
             $form['taxonomy'][$vid]['#value'] = $default_tids;
@@ -120,7 +118,7 @@ function taxonomy_defaults_form_alter(&$form, &$form_state, $form_id) {
 
 function _taxonomy_defaults_clear_settings($type, $vid) {
   variable_del("taxdef_{$type}_{$vid}_visible");
-  variable_del("taxdef_{$type}_{$vid}");
+  variable_del("taxdef_{$type}_{$vid}");  
 }
 
 /**
@@ -149,8 +147,9 @@ function taxonomy_defaults_taxonomy($op, $type, $args = NULL) {
  */
 function taxonomy_defaults_node_type($op, $args = NULL) {
   if ($op == 'delete') {
-    foreach (taxonomy_get_vocabularies() as $vid => $vocab) {
-      _taxonomy_defaults_clear_settings($args->type, $vid);
+    $type = $args->type;
+    foreach (taxonomy_get_vocabularies($node->type) as $vid => $vocab) {
+      _taxonomy_defaults_clear_settings($type, $vid);
     }
   }
 }

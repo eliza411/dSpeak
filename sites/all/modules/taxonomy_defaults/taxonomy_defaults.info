@@ -3,9 +3,9 @@ name = Taxonomy Defaults
 description = Assign default taxonomy terms per node-type.
 dependencies[] = taxonomy
 core = 6.x
-; Information added by drupal.org packaging script on 2010-07-11
-version = "6.x-1.x-dev"
+; Information added by drupal.org packaging script on 2009-10-19
+version = "6.x-1.1-beta2"
 core = "6.x"
 project = "taxonomy_defaults"
-datestamp = "1278835895"
+datestamp = "1255965104"
 

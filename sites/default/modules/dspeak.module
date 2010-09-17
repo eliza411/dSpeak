@@ -1,0 +1,22 @@
+<?php
+
+/**
+ * Implementation of hook_form_alter().
+ */
+
+function dspeak_form_alter(&$form, &$form_state, $form_id) {
+
+  // If we're on a node form that has the privacy taxonomy selection...
+  if (isset($form['#node']) && $form['#node']->type .'_node_form' == $form_id) {
+    if (isset($form['taxonomy'][4])) {
+      // Remove the empty selection.
+      unset($form['taxonomy'][4]['#options']['']);
+    }
+    if (isset($form['taxonomy'][5])) {
+      // Remove the empty selection.
+      unset($form['taxonomy'][5]['#options']['']);
+    }
+
+  }
+}
+

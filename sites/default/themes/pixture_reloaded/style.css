@@ -929,4 +929,15 @@ div.comment .unpublished {
   width: 30px;
 }
 
+#edit-taxonomy-4-wrapper,
+#edit-taxonomy-5-wrapper {
+  float: left;
+  padding-right: 10px;
+}
 
+#comments {
+  margin-left: 100px;
+  border-top: 1px solid #ccc;
+  padding-top: 10px;
+  padding-right: 25px;
+}

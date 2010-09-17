@@ -1,5 +1,5 @@
 <?php
-// $Id: taxonomy_defaults.admin.inc,v 1.1.2.12 2010/04/18 22:53:52 sleepcamel Exp $
+// $Id: taxonomy_defaults.admin.inc,v 1.1.2.10 2009/10/18 06:19:35 sleepcamel Exp $
 
 /**
  * @file
@@ -54,14 +54,14 @@ function taxonomy_defaults_form() {
       }
       else {
         if (variable_get("taxdef_{$type}_{$vid}", FALSE)) {
-          drupal_set_message(t("Taxonomy Defaults were detected for the @vocab vocabulary on the @type content type, but @type is not selected in @vocab !settings. !details.", array('@vocab' => $vocab->name, '@type' => $type, '!settings' => l('settings', '/admin/content/taxonomy/edit/vocabulary/'. $vid), '!details' => l('Explanation', 'http://drupal.org/node/559828#comment-2162950'))), "warning");
+          drupal_set_message(t("Taxonomy Defaults were detected for the @vocab vocabulary on the @type content type, but @type is not selected in @vocab !settings. !details.", array('@vocab' => $vocab->name, '@type' => $type, '!settings' => l('settings','/admin/content/taxonomy/edit/vocabulary/'.$vid), '!details' => l('Explanation','http://drupal.org/node/559828#comment-2162950'))),"warning");
         }
       }
     }
   }
   if (count($vocabularies) > 0) {
     $form['buttons']['submit'] = array('#type' => 'submit', '#value' => t('Save configuration') );
-    $form['buttons']['reset'] = array('#type' => 'submit', '#value' => t('Reset to defaults') , '#submit' => array('taxonomy_defaults_reset_submit'));
+    $form['buttons']['reset'] = array('#type' => 'submit', '#value' => t('Reset to defaults') );
   }
   else {
     $form['text'] = array(
@@ -72,54 +72,55 @@ function taxonomy_defaults_form() {
 }
 
 /**
- * Clear all settings in the variable table
- */
-function taxonomy_defaults_reset_submit($form, &$form_state) {
-  foreach (node_get_types() as $type => $name) {
-    foreach ($form_state['values'][$type] as $vid => $values) {
-      _taxonomy_defaults_clear_settings($type, $vid);
-    }
-  }
-  drupal_set_message(t('The configuration options have been reset to their default values.'));
-}
-
-/**
  * Store settings in the variable table.
  */
 function taxonomy_defaults_form_submit($form, &$form_state) {
-  foreach (node_get_types() as $type => $name) {
-    if (is_array($form_state['values'][$type])) {foreach ($form_state['values'][$type] as $vid => $values) {
-      variable_set("taxdef_{$type}_{$vid}_visible", !$values['hide_vocab']);
-      if (isset($values['tags'])) {
-        $typed_input = $values['tags'];
-        $typed_terms = drupal_explode_tags($typed_input);
-        $inserted = array();
-        foreach ($typed_terms as $typed_term) {
-          // See if the term exists in the chosen vocabulary
-          // and return the tid; otherwise, add a new record.
-          $possibilities = taxonomy_get_term_by_name($typed_term);
-          $typed_term_tid = NULL;  // tid match, if any.
-          foreach ($possibilities as $possibility) {
-            if ($possibility->vid == $vid) {
-              $typed_term_tid = $possibility->tid;
-            }
-          }
-          if ($typed_term_tid) {
-            $inserted[] = $typed_term_tid;
-          }
-          else {
-            drupal_set_message(t("'@term' does not exist.", array('@term' => $typed_term, '@vocab' => $vid)), 'warning');
-          }
-        }
-        variable_set("taxdef_{$type}_{$vid}", $inserted);
-      }
-      else {
-        variable_set("taxdef_{$type}_{$vid}", is_array($values['select']) ? $values['select'] : array($values['select']));
+  $op = isset($form_state['clicked_button']['op']) ? $form_state['clicked_button']['op'] : '';
+
+  drupal_set_message ("test: ".var_export($form['op']));
+
+  if ($op == t('Reset to defaults')) {
+    foreach (node_get_types() as $type => $name) {
+      foreach ($form_state['values'][$type] as $vid => $values) {
+        _taxonomy_defaults_clear_settings($type, $vid);
       }
     }
+    drupal_set_message(t('The configuration options have been reset to their default values.'));
   }
-}
-  drupal_set_message(t('The configuration options have been saved.'));
+  else {
+    foreach (node_get_types() as $type => $name) {
+      foreach ($form_state['values'][$type] as $vid => $values) {
+        variable_set("taxdef_{$type}_{$vid}_visible", !$values['hide_vocab']);
+        if (isset($values['tags'])) {
+          $typed_input = $values['tags'];
+          $typed_terms = drupal_explode_tags($typed_input);
+          $inserted = array();
+          foreach ($typed_terms as $typed_term) {
+            // See if the term exists in the chosen vocabulary
+            // and return the tid; otherwise, add a new record.
+            $possibilities = taxonomy_get_term_by_name($typed_term);
+            $typed_term_tid = NULL; // tid match, if any.
+            foreach ($possibilities as $possibility) {
+              if ($possibility->vid == $vid) {
+                $typed_term_tid = $possibility->tid;
+              }
+            }
+            if ($typed_term_tid) {
+              $inserted[] = $typed_term_tid;
+            }
+            else {
+              drupal_set_message(t("'@term' does not exist.", array('@term' => $typed_term, '@vocab' => $vid)), 'warning');
+            }
+          }
+          variable_set("taxdef_{$type}_{$vid}", $inserted);
+        }
+        else {
+          variable_set("taxdef_{$type}_{$vid}", is_array($values['select']) ? $values['select'] : array($values['select']));
+        }
+      }
+    }
+    drupal_set_message(t('The configuration options have been saved.'));
+  }
 }
 
 /**
