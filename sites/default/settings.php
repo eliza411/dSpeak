@@ -271,7 +271,7 @@ $conf['support_mail_ticket_new_subject'] = '[!site] !key !ticket_subject';
 $conf['support_mail_ticket_comment_new_subject'] = '[!site] !key !ticket_subject';
 
 $conf['support_mail_ticket_new_body'] =
-  "!key !ticket_subject\n". 
+#  "!key !ticket_subject\n". //these special characters can't be escaped in the body
   "!ticket_body\n".
   "\n".
   " -- !update_username\n".
