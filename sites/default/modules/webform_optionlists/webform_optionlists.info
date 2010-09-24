@@ -1,0 +1,5 @@
+; $Id: webform_optionlists.info,v 1.0 2010/24/09 11:24:33 eliza411 Exp $
+name = Webform Option Lists
+description = Custom dSpeak web site option lists for Webform module
+package = Custom
+core=6.x
