@@ -9,6 +9,10 @@ function webform_optionlists_webform_select_options_info() {
     'title' => t('Numbers 1-100'),
     'options callback' => 'webform_optionlists_options_one_onehundred'
   );
+  $items['agree'] = array(
+  'title' => t('Agree/Disagree 4'),
+  'options callback' => 'webform_optionlists_agree_disagree_4'
+  );
   return $items;
 }
 /**
@@ -20,4 +24,16 @@ function webform_optionlists_options_one_onehundred() {
     $options[$x] = $x;
   }
   return $options;
+}
+
+function webform_optionlists_agree_disagree_4() { 
+ $options = array (
+  'SA' => t('Strongly Agree'),
+  'A'  => t('Agree'),
+  'D'  => t('Disagree'),
+  'SD' => t('Strongly Disagree'), 
+  'NA' => t('Not Applicable'),
+  );
+  return $options;
+
 }
