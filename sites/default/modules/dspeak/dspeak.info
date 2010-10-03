@@ -1,0 +1,5 @@
+; $Id: dspeak.info,v 1.0 2010/17/09 11:24:33 eliza411 Exp $
+name = dSpeak
+description = Custom functions related to the dSpeak web site.
+package = Custom
+core=6.x

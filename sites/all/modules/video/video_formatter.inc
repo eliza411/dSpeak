@@ -1,5 +1,5 @@
 <?php
-// $Id: video_formatter.inc,v 1.1.2.22 2010/06/06 15:40:55 iLLin Exp $
+// $Id: video_formatter.inc,v 1.1.2.24 2010/09/25 17:11:53 heshanmw Exp $
 
 /**
  * @file
@@ -18,7 +18,7 @@ function theme_video_formatter_video_plain($element) {
   if (isset($field['widget']['autoconversion']) && $field['widget']['autoconversion'] && !$element['#item']['data']['bypass_autoconversion']) {
     module_load_include('inc', 'video', '/includes/conversion');
     $conversion = new video_conversion;
-    $video = $conversion->load_video($element['#item']['fid']);
+    $video = $conversion->load_job($element['#item']['fid']);
     if($video->video_status == VIDEO_RENDERING_ACTIVE || $video->video_status == VIDEO_RENDERING_PENDING) {
       return theme('video_inprogress');
     }
@@ -143,7 +143,7 @@ function theme_video_flv($video, $node) {
   elseif ($video->flash_player == 'flowplayer') {
     $options = array(
       'clip' => array(
-        'url' => $video->url,
+        'url' => urlencode($video->url),
         'autoPlay' => $video->autoplay,
         'autoBuffering' => $video->autobuffering,
     ),

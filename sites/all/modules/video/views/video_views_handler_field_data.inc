@@ -1,5 +1,5 @@
 <?php
-// $Id: video_views_handler_field_data.inc,v 1.1.2.1 2010/04/28 23:44:42 iLLin Exp $
+// $Id: video_views_handler_field_data.inc,v 1.1.2.2 2010/09/19 11:31:52 heshanmw Exp $
 
 /**
  * @file
@@ -40,7 +40,7 @@ class video_views_handler_field_data extends content_handler_field {
     $item['filepath'] = $filepath;
     $item['filename'] = $file['basename'];
     $item['filemime'] = file_get_mimetype($file['basename']);
-    $item['filesize'] = filesize($filepath);
+    $item['filesize'] = is_readable($filepath) ? filesize($filepath) : 0;
 
     // Render items.
     $formatter_name = $options['format'];

@@ -1,5 +1,5 @@
 <?php
-// $Id: comment.tpl.php,v 1.1 2009/08/19 04:28:52 sociotech Exp $
+// $Id: comment.tpl.php,v 1.2 2010/09/17 21:36:06 eternalistic Exp $
 ?>
 
 <div class="comment-wrapper">

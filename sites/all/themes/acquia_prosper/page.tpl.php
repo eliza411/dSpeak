@@ -1,5 +1,5 @@
 <?php
-// $Id: page.tpl.php,v 1.1.2.5 2010/01/11 00:09:05 sociotech Exp $
+// $Id: page.tpl.php,v 1.7 2010/09/17 21:36:06 eternalistic Exp $
 ?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="<?php print $language->language; ?>" xml:lang="<?php print $language->language; ?>">
 
@@ -36,6 +36,7 @@
             <?php print theme('grid_row', $header_top, 'header-top-region', 'full-width', $grid_width); ?>
             <?php print theme('grid_block', theme('links', $secondary_links), 'secondary-menu'); ?>
             <?php print theme('grid_block', $search_box, 'search-box'); ?>
+            <?php if ($header_top && !$secondary_links && $search_box): ?><div id="header-top-placeholder"></div><?php endif; ?>
           </div><!-- /header-top-inner -->
         </div><!-- /header-top -->
       </div><!-- /header-top-wrapper -->

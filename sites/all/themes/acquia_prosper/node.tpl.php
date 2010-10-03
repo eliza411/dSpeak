@@ -1,10 +1,9 @@
 <?php
-// $Id: node.tpl.php,v 1.1.2.2 2009/11/11 05:26:25 sociotech Exp $
+// $Id: node.tpl.php,v 1.4 2010/09/17 21:36:06 eternalistic Exp $
 ?>
 
 <div id="node-<?php print $node->nid; ?>" class="node <?php print $node_classes; ?>">
   <div class="inner">
-    <?php print $picture ?>
   
     <?php if ($page == 0): ?>
     <h2 class="title"><a href="<?php print $node_url ?>" title="<?php print $title ?>"><?php print $title ?></a></h2>
@@ -25,6 +24,7 @@
     <?php endif; ?>
 
     <div class="content clearfix">
+      <?php print $picture ?>
       <?php print $content ?>
     </div>
   

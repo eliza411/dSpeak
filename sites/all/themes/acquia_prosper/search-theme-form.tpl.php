@@ -1,5 +1,5 @@
 <?php
-// $Id: search-theme-form.tpl.php,v 1.1.2.1 2009/12/02 01:09:00 sociotech Exp $
+// $Id: search-theme-form.tpl.php,v 1.3 2010/09/17 21:36:06 eternalistic Exp $
 
 /**
  * @file search-theme-form.tpl.php

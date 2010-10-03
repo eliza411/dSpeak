@@ -1,5 +1,5 @@
 <?php
-// $Id: videoftp.module,v 1.1.2.5 2010/05/13 03:17:36 iLLin Exp $
+// $Id: videoftp.module,v 1.1.2.6 2010/08/29 08:05:41 heshanmw Exp $
 
 /**
  * @file
@@ -17,7 +17,7 @@ function videoftp_menu() {
     'page callback' => 'videoftp_js',
     'page arguments' => array(2, 3, 4),
     //'access callback' => 'videoftp_edit_access',
-    'access arguments' => array(3),
+    'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
   );
   $items['videoftp/progress'] = array(

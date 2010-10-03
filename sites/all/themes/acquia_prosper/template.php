@@ -1,5 +1,5 @@
 <?php
-// $Id: template.php,v 1.1.2.3 2009/11/05 03:32:15 sociotech Exp $
+// $Id: template.php,v 1.5 2010/09/17 21:36:06 eternalistic Exp $
 
 /**
  * Changed breadcrumb separator

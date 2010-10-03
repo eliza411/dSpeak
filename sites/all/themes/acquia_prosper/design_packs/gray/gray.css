@@ -1,4 +1,4 @@
-/* $Id: gray.css,v 1.1.2.1 2010/01/11 00:09:05 sociotech Exp $ */
+/* $Id: gray.css,v 1.3 2010/09/17 21:36:06 eternalistic Exp $ */
 
 /* Basic Typography & Colors
 -------------------------------------------------------------- */
@@ -77,7 +77,7 @@ blockquote {
 
 /* Header Top */
 .header-top-wrapper {
-  background: #4f4f4f url(images/secondary-menu-bg.png) repeat-x top left;
+  background: #5b5b5b url(images/secondary-menu-bg.png) repeat-x 0 100%;
 }
 
 /* Header top region */
@@ -90,6 +90,10 @@ blockquote {
 .header-top-region a:hover,
 .header-top-region a:focus {
   color: #fff;
+}
+
+.header-top h2.title {
+  color: #AFAFAF;
 }
 
 /* Header Wrapper */
@@ -123,7 +127,7 @@ blockquote {
 /* Header Regions - Search
 -------------------------------------------------------------- */
 .search-box-inner form#search-theme-form {
-  background: url(images/search-bg.png) no-repeat top center;
+  background: url(images/search-bg.png) no-repeat 50% 0;
 }
 
 .search-box-inner input#edit-search-theme-form-header {
@@ -190,11 +194,10 @@ blockquote {
 /* Primary Menu
 /-------------------------------------------------------------- */
 .header-primary-menu-wrapper {
-  background: #1d1d1d url(images/primary-menu-bg.png) repeat-x top left;
+  background: #1d1d1d url(images/primary-menu-bg.png) repeat-x 0 0;
   border-bottom: 5px solid #929292;
 }
 
-/* visited pseudo selector so IE6 applies text colour */
 .primary-menu-inner ul.menu li a:link,
 .primary-menu-inner ul.menu li a:visited {
   border-left: 1px solid #5b5b5b;
@@ -245,6 +248,7 @@ blockquote {
 
 .primary-menu-inner ul.sf-menu li ul.menu a:link,
 .primary-menu-inner ul.sf-menu li ul.menu a:visited {
+  background: none;
   border-left: none;
   color: #000;
 }
@@ -263,11 +267,7 @@ blockquote {
   border-right: none;
 }
 
-.primary-menu-inner ul.sf-menu li.sfHover ul.menu li a:visited {
-  background: #f4f4f4;
-  color: #535353;
-}
-
+.primary-menu-inner ul.sf-menu li.sfHover ul.menu li:hover,
 .primary-menu-inner ul.sf-menu li.sfHover ul.menu li a:focus,
 .primary-menu-inner ul.sf-menu li.sfHover ul.menu li a:hover {
   background: #fff;
@@ -279,29 +279,42 @@ blockquote {
   border-top: 1px solid #dcdcdc;
 }
 
-/* Primary menu - nolink */
-.primary-menu-inner ul.menu li .nolink {
+/* Primary menu - Nolink */
+#primary-menu ul.menu li span.nolink  {
   border-left: 1px solid #5b5b5b;
   color: #aeaeae;
 }
 
-.primary-menu-inner ul.menu li .nolink:hover,
-.primary-menu-inner ul.menu li .nolink.hover {
-  color: #fff;
-}
-
-.primary-menu-inner ul.menu li.active-trail .nolink,
-.primary-menu-inner ul.sf-menu li:hover .nolink,
-.primary-menu-inner ul.sf-menu li.hover .nolink {
+#primary-menu ul.menu li span.nolink:hover,
+#primary-menu ul.menu li span.nolink.hover,
+#primary-menu ul.menu li:hover span.nolink,
+#primary-menu ul.menu li.hover span.nolink,
+#primary-menu ul.menu li.active-trail span.nolink,
+#primary-menu ul.sf-menu li.sfHover span.nolink {
   background: #f4f4f4;
   color: #8b8b8b;
+}
+
+#primary-menu ul.menu li.active-trail span.nolink {
+  color: #444;
+}
+
+#primary-menu ul.sf-menu li.sfHover ul.menu li span.nolink,
+#primary-menu ul.menu li:hover ul.menu li span.nolink,
+#primary-menu ul.menu li.hover ul.menu li span.nolink {
+  color: #444;
+}
+
+#primary-menu ul.menu li:hover ul.menu li span.nolink:hover,
+#primary-menu ul.menu li.hover ul.menu li span.nolink.hover {
+  background: #fff;
 }
 
 
 /* Tables
 /-------------------------------------------------------------- */
-thead th,
-th {
+th,
+thead th {
   background: #e8e8e8;
   border-bottom: 1px solid #cfcfcf;
 }
@@ -312,18 +325,18 @@ tbody th {
 
 tr.even,
 tr.odd {
-  background: transparent;
+  background-color: transparent;
 }
 
 tr.even td,
 tr.odd td {
-  background: transparent;
+  background-color: transparent;
   border: 1px solid #dbdbdb;
 }
 
 tr.drag td,
 tr.drag-previous td {
-  background: #ffd;
+  background-color: #ffd;
 }
 
 
@@ -455,7 +468,7 @@ ul.pager li.pager-last a:focus  {
 /-------------------------------------------------------------- */
 /* defaults for all form buttons */
 .form-submit {
-  background: #9e9e9e url(images/button-bg.png) repeat-x top center;
+  background: #9e9e9e url(images/button-bg.png) repeat-x 50% 0;
   border: 3px solid #e9e9e9;
   color: #fff;
 }
@@ -463,7 +476,7 @@ ul.pager li.pager-last a:focus  {
 .form-submit:hover,
 .form-submit.hover,
 .form-submit:focus {
-  background-position: bottom center;
+  background-position: 50% 100%;
 }
 
 fieldset {
@@ -521,7 +534,7 @@ div.poll div.bar {
 }
 
 div.poll div.bar div.foreground {
-  background: #eaeaea url(images/poll-bg.png) repeat-x bottom center;
+  background: #eaeaea url(images/poll-bg.png) repeat-x 50% 0;
 }
 
 div.poll .percent {
@@ -720,7 +733,7 @@ div.poll .percent {
 
 /* Gradient & border */
 .prosper-gradient-border .inner {
-  background: #ddd url(images/prosper-gradient-border-bg.png) repeat-x top center;
+  background: #ddd url(images/prosper-gradient-border-bg.png) repeat-x 50% 0;
   border: 3px solid #b4b4b4;
   color: #6a6a6a;
 }
@@ -750,7 +763,7 @@ div.poll .percent {
 }
 
 .prosper-menu-list ul li {
-  background: #f7f7f7 url(images/menu-block-list.png) repeat-x top left;
+  background: #f7f7f7 url(images/menu-block-list.png) repeat-x 0 0;
 }
 
 .inner .prosper-menu-list ul li a:link,
@@ -823,34 +836,40 @@ div.poll .percent {
 }
 
 .prosper-shoppingcart-light .cart-block-icon-empty {
-  background: url(images/icon-shoppingcart.png) no-repeat left center;
+  background: url(images/icon-shoppingcart.png) no-repeat 0 50%;
 }
 
 .prosper-shoppingcart-light .cart-block-icon-full {
-  background: url(images/icon-shoppingcart-full.png) no-repeat left center;
+  background: url(images/icon-shoppingcart-full.png) no-repeat 0 50%;
 }
 
 .prosper-shoppingcart-light .arrow-down {
-  background: url(images/shoppingcart-expanded.png) no-repeat center center;
+  background: url(images/shoppingcart-expanded.png) no-repeat 50% 50%;
 }
 
 .prosper-shoppingcart-light .arrow-up {
-  background: url(images/shoppingcart-collapsed.png) no-repeat center center;
+  background: url(images/shoppingcart-collapsed.png) no-repeat 50% 50%;
 }
 
 .prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-view-cart a:link,
-.prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-view-cart a:visited,
-.prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-checkout a:link,
-.prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-checkout a:visited {
-  background: #9e9e9e url(images/button-bg.png) repeat-x top center;
-  color: #fff;
+.prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-view-cart a:visited {
+  color: #686868;
 }
 
 .prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-view-cart a:hover,
-.prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-view-cart a:focus,
+.prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-view-cart a:focus {
+  text-decoration: underline;
+}
+
+.prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-checkout a:link,
+.prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-checkout a:visited {
+  background: #9e9e9e url(images/button-bg.png) repeat-x 50% 0;
+  color: #fff;
+}
+
 .prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-checkout a:hover,
 .prosper-shoppingcart-light .cart-block-summary-links ul li.cart-block-checkout a:focus {
-  background-position: bottom center;
+  background-position: 50% 100%;
 }
 
 /* Shopping cart - dark */
@@ -878,34 +897,40 @@ div.poll .percent {
 }
 
 .prosper-shoppingcart-dark .cart-block-icon-empty {
-  background: url(images/icon-shoppingcart-dark.png) no-repeat left center;
+  background: url(images/icon-shoppingcart-dark.png) no-repeat 0 50%;
 }
 
 .prosper-shoppingcart-dark .cart-block-icon-full {
-  background: url(images/icon-shoppingcart-full-dark.png) no-repeat left center;
+  background: url(images/icon-shoppingcart-full-dark.png) no-repeat 0 50%;
 }
 
 .prosper-shoppingcart-dark .arrow-down {
-  background: url(images/shoppingcart-expanded.png) no-repeat center center;
+  background: url(images/shoppingcart-expanded.png) no-repeat 50% 50%;
 }
 
 .prosper-shoppingcart-dark .arrow-up {
-  background: url(images/shoppingcart-collapsed.png) no-repeat center center;
+  background: url(images/shoppingcart-collapsed.png) no-repeat 50% 50%;
 }
 
 .prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-view-cart a:link,
-.prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-view-cart a:visited,
-.prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-checkout a:link,
-.prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-checkout a:visited {
-  background: #9e9e9e url(images/button-bg-dark.png) repeat-x top center;
-  color: #d7d7d7;
+.prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-view-cart a:visited {
+  color: #D7D7D7;
 }
 
 .prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-view-cart a:hover,
-.prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-view-cart a:focus,
+.prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-view-cart a:focus {
+  text-decoration: underline;
+}
+
+.prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-checkout a:link,
+.prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-checkout a:visited {
+  background: #9e9e9e url(images/button-bg-dark.png) repeat-x 50% 0;
+  color: #d7d7d7;
+}
+
 .prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-checkout a:hover,
 .prosper-shoppingcart-dark .cart-block-summary-links ul li.cart-block-checkout a:focus {
-  background-position: bottom center;
+  background-position: 50% 100%;
 }
 
 /* Prosper quicktabs */
@@ -968,7 +993,7 @@ div.poll .percent {
 }
 
 .prosper-comments-edgy .comment-wrapper .odd .comment-top-left {
-  background: url(images/comment-top-left-odd.png) no-repeat top left;
+  background: url(images/comment-top-left-odd.png) no-repeat 0 0;
 }
 
 .prosper-comments-edgy .comment-wrapper .even .content {
@@ -981,7 +1006,7 @@ div.poll .percent {
 }
 
 .prosper-comments-edgy .comment-wrapper .even .comment-top-left {
-  background: url(images/comment-top-left-even.png) no-repeat top left;
+  background: url(images/comment-top-left-even.png) no-repeat 0 0;
 }
 
 .prosper-comments-edgy .comment-wrapper .signature {
@@ -1009,7 +1034,7 @@ div.poll .percent {
 }
 
 /* Prosper comments - clean */
-.prosper-comments-clean #comments {
+.prosper-comments-clean .comment-wrapper {
   background: #fff;
   color: #8e8e8e;
 }
@@ -1104,6 +1129,11 @@ div.poll .percent {
 .postscript-bottom-wrapper .teaser,
 .footer-wrapper .teaser {
   border-bottom: 2px solid #6F6F6F;
+}
+
+/* Picture */
+.node .content .picture img {
+  border: 1px solid #cbcbcb;
 }
 
 
@@ -1355,4 +1385,59 @@ html.js #uc-cart-checkout-form fieldset.collapsed legend a {
 #content-tabs ul.secondary li a.active:visited {
   border-bottom: 2px solid #ddd;
   color: #000;
+}
+
+
+/* Skinr previews
+/-------------------------------------------------------------- */
+#screenshot .prosper-gray-rounded-plain-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-01.png) no-repeat;
+}
+
+#screenshot .prosper-gray-rounded-style-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-02.png) no-repeat;
+}
+
+#screenshot .prosper-grayborder-darkbackground-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-03.png) no-repeat;
+}
+
+#screenshot .prosper-lightgraybackground-border-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-04.png) no-repeat;
+}
+
+#screenshot .prosper-mediumgraybackground-bottomborder-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-05.png) no-repeat;
+}
+
+#screenshot .prosper-gradient-border-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-06.png) no-repeat;
+}
+
+#screenshot .prosper-menu-list-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-07.png) no-repeat;
+}
+
+#screenshot .prosper-shoppingcart-light-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-08.png) no-repeat;
+}
+
+#screenshot .prosper-shoppingcart-dark-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-09.png) no-repeat;
+}
+
+#screenshot .prosper-quicktabs-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-10.png) no-repeat;
+}
+
+#screenshot .prosper-comments-clean-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-11.png) no-repeat;
+}
+
+#screenshot .prosper-comments-edgy-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-12.png) no-repeat;
+}
+
+#screenshot .prosper-gray-border-image-skinrpreview {
+  background: url(images/skinrpreviews/acquiaprosper-gray-styles-13.png) no-repeat;
 }

@@ -1,5 +1,5 @@
 <?php
-// $Id: node-product.tpl.php,v 1.1.2.3 2009/11/11 05:26:25 sociotech Exp $
+// $Id: node-product.tpl.php,v 1.5 2010/09/17 21:36:06 eternalistic Exp $
 ?>
 
 <div id="node-<?php print $node->nid; ?>" class="node clear-block <?php print $node_classes; ?>">
@@ -32,7 +32,8 @@
           <?php print $fusion_uc_body; ?>
         </div>
 
-        <div id="product-details" class="clear">
+        <?php $product_details = $fusion_uc_weight || $fusion_uc_dimensions || $fusion_uc_list_price || $fusion_uc_sell_price || $fusion_uc_model || $fusion_uc_cost; ?>
+        <div id="product-details" class="clear<?php if (!$product_details): ?> field-group-empty<?php endif; ?>">
           <div id="field-group">
             <?php print $fusion_uc_weight; ?>
             <?php print $fusion_uc_dimensions; ?>

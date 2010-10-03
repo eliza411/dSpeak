@@ -1,40 +1,58 @@
 <?php
-//$Id: transcoder.inc,v 1.1.2.13 2010/07/25 14:39:16 heshanmw Exp $
+
+//$Id: transcoder.inc,v 1.1.2.21 2010/09/26 16:08:46 heshanmw Exp $
 /*
  * @file
  * Class file used to wrap the transcoder functions.
  *
  * @todo need more commenting
-*/
+ * - Add Metadata support
+ * Add autoloading
+ * # http://stackoverflow.com/questions/3343208/php-class-lazy-loading
+ * # http://php.net/manual/en/language.oop5.autoload.php
+ * 
+ */
 
 class video_transcoder {
+
   private $transcoder;
 
   public function __construct($transcoder = null) {
+    $this->transcoder = $this->get_instance($transcoder);
+  }
+
+  /**
+   *
+   * @param <type> $transcoder 
+   */
+  private function get_instance($transcoder = null) {
     //get our configured transcoder.
-    if(!isset ($transcoder))
+    if (!isset($transcoder))
       $transcoder = variable_get('vid_convertor', 'video_ffmpeg');
 //    module_load_include('inc', 'video', '/transcoders/' . $transcoder);
-    if(!module_load_include('inc', 'video', '/transcoders/' . $transcoder)) {
+    if (!module_load_include('inc', 'video', '/transcoders/' . $transcoder)) {
       $modules = module_list();
-      foreach($modules as $module) {
-        $mobule_files = array();
-        $module_path = drupal_get_path('module', $module) .'/transcoders';
-        $mobule_files = file_scan_directory($module_path, '^.*\.inc$');
-        if(is_array($mobule_files)) {
-          foreach($mobule_files as $file) {
-            if($file->name == $transcoder)
-              require_once $file->filename;
-          }
-
+      $files = array();
+      foreach ($modules as $module) {
+        $module_path = drupal_get_path('module', $module) . '/transcoders';
+        $inc_files = file_scan_directory($module_path, '^.*\.inc$');
+        if (!empty($inc_files))
+          $files[$module] = $inc_files;
+      }
+      // @TODO : add lazy load
+      foreach ($files as $module => $_files) {
+        foreach ($_files as $file) {
+          if ($file->name == $transcoder)
+            module_load_include('inc', $module, '/transcoders/' . $file->name);
         }
-//        
       }
     }
-    if(class_exists($transcoder)) {
-      $this->transcoder = new $transcoder;
-    }
-    else {
+
+    if (class_exists($transcoder)) {
+      $transcoder_instance = new $transcoder;
+      $this->transcoder = $transcoder_instance;
+      return $transcoder_instance;
+    } else {
       drupal_set_message(t('The transcoder is not configured properly.'), 'error');
     }
   }
@@ -43,14 +61,20 @@ class video_transcoder {
     return $this->transcoder->generate_thumbnails($video);
   }
 
-  public function convert_video($video, $converted, $dimensions) {
-    $output = $this->transcoder->convert_video($video, $converted, $dimensions);
+  public function convert_video($video) {
+    $output = $this->transcoder->convert_video($video);
+    // if successfully converted the video then update the status to publish
+    if ($output)
+    // Update our node id to published.  We do not do a node_load as it causes editing problems when saving.
+      db_query("UPDATE {node} SET status=%d WHERE nid=%d", 1, $video->nid);
+
     // If they are using metadata.
-    if (variable_get('video_metadata', FALSE)) {
-      module_load_include('inc', 'video', '/includes/metadata');
-      $metadata = new video_metadata;
-      $metadata->process($converted);
-    }
+    // @TODO : add meta data support
+//    if (variable_get('video_metadata', FALSE)) {
+//      module_load_include('inc', 'video', '/includes/metadata');
+//      $metadata = new video_metadata;
+//      $metadata->process($converted);
+//    }
     return $output;
   }
 
@@ -71,25 +95,27 @@ class video_transcoder {
   }
 
   public function admin_settings_validate($form, &$form_state) {
-    return $this->transcoder->admin_settings_validate($form, &$form_state);
+    return $this->transcoder->admin_settings_validate($form, $form_state);
   }
 
   private function _transcoders() {
+    $files = array();
     // Lets find our transcoder classes and build our radio options
     // We do this by scanning our transcoders folder
     $form = array('radios' => array(), 'help' => array(), 'admin_settings' => array());
-    $path = drupal_get_path('module', 'video') .'/transcoders';
+    $path = drupal_get_path('module', 'video') . '/transcoders';
     $files = file_scan_directory($path, '^.*\.inc$');
     // check inside sub modules
     $modules = module_list();
-    foreach($modules as $module) {
+    foreach ($modules as $module) {
       $mobule_files = array();
-      $module_path = drupal_get_path('module', $module) .'/transcoders';
+      $module_path = drupal_get_path('module', $module) . '/transcoders';
       $mobule_files = file_scan_directory($module_path, '^.*\.inc$');
+      $files = array_merge($files, $mobule_files);
     }
-    $files = array_merge($files, $mobule_files);
-    foreach($files as $file) {
-      if(!module_load_include('inc', 'video', '/transcoders/' . $file->name))
+
+    foreach ($files as $file) {
+      if (!module_load_include('inc', 'video', '/transcoders/' . $file->name))
         require_once $file->filename;
       $focus = new $file->name;
       $form['radios'][$focus->get_value()] = $focus->get_name();
@@ -114,21 +140,65 @@ class video_transcoder {
     return $this->transcoder->video_converted_extension();
   }
 
-  public function is_wsod() {
-    return $this->transcoder->is_wsod();
+  public function create_job($video) {
+    return $this->transcoder->create_job($video);
+  }
+
+  public function update_job($video) {
+    return $this->transcoder->update_job($video);
+  }
+
+  public function delete_job($video) {
+    return $this->transcoder->delete_job($video);
+  }
+
+  /**
+   * Load a file based on the file id ($fid)
+   *
+   * @param $fid
+   *   Integer of the file id to be loaded.
+   */
+  public function load_job($fid) {
+    return $this->transcoder->load_job($fid);
+  }
+
+  public function load_job_queue() {
+    return $this->transcoder->load_job_queue();
+  }
+
+  public function load_completed_job($video) {
+    return $this->transcoder->load_completed_job($video);
   }
 
 }
 
 interface transcoder_interface {
-  public function run_command($command);
+
+  public function create_job($video);
+
+  public function update_job($video);
+
+  public function delete_job($video);
+
+  public function load_job($fid);
+
+  public function load_job_queue();
+
+  public function load_completed_job($video);
+
+  public function change_status($vid, $status);
+
   public function generate_thumbnails($video);
-  public function convert_video($video, $converted, $dimensions);
-  public function get_playtime($video);
+
+  public function convert_video($video);
+
   public function get_name();
+
   public function get_value();
+
   public function get_help();
-  public function is_wsod();
+
   public function admin_settings();
+
   public function admin_settings_validate($form, &$form_state);
 }
