@@ -1,0 +1,25 @@
+/**
+ * Footheme footheme.css
+ *
+ * Use this file to add your custom styles.
+ *
+ * You can change the name of this file, just
+ * remember to update the name in the info file
+ * as well.
+ */
+
+#quiz-view-table {
+  display: none;
+}
+
+.quiz-question-body p {
+  font-size: 140%;
+}
+
+.quiz-question-body {
+  padding: 10px;
+}
+
+.field-name-field-tags li {
+  padding-right: 20px;
+}
