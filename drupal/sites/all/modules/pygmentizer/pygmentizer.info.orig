@@ -2,7 +2,6 @@ name = Pygmentizer
 description = Highlight codes by <a href="http://pygments.org" target="_blank">Pygments</a>.
 
 core = 7.x
-php = 5.3
 
 files[] = pygmentizer.module
 

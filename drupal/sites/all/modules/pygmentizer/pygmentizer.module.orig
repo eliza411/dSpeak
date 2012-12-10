@@ -73,11 +73,8 @@ function _pygmentizer_inline_process($text, $filter, $format, $langcode, $cache,
  * Core function does the real job.
  */
 function _pygmentizer_inline_pygmentize($bin_path, $style, $text) {
-  $pattern = '/\[pygmentize([^]]*)\](.*?)\[\/pygmentize\]/s';
-  $callback = function ($match) use ($bin_path, $style) {
-    return _pygmentizer_replace_callback($match[1], $match[2], $bin_path, $style);
-  };
-  return preg_replace_callback($pattern, $callback, $text);
+  $pattern = '/\[pygmentize([^]]*)\](.*?)\[\/pygmentize\]/se';
+  return preg_replace($pattern, "_pygmentizer_replace_callback('$1', '$2', \$bin_path, \$style)", $text);
 }
 
 /**
@@ -228,17 +225,11 @@ function _pygmentizer_replace_callback($params, $code, $bin_path, $style) {
   // prepare params
   $cmd_params = _pygmentizer_params_cmdize(trim($params));
 
-  // Open process and create pipes to talk to pygmentize
-  $proc = proc_open("$bin_path $cmd_params", array(array('pipe','r'), array('pipe','w')), $pipes);
+  // user input must be escaped
+  $code = escapeshellarg($code);
 
-  // Write code to stdin and close pipe.
-  fwrite($pipes[0], $code); // Put code in stdout.
-  fclose($pipes[0]);
-
-  // Read from stdout and close pipe and process.
-  $pygmentized = stream_get_contents($pipes[1]);
-  fclose($pipes[1]);
-  proc_close($proc);
+  $command = "echo $code | $bin_path $cmd_params";
+  $pygmentized = shell_exec($command);
 
   $class = "pygmentized $style";
   return '<div class="' . $class . '">' . $pygmentized . '</div>';
