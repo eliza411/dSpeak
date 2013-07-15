@@ -39,7 +39,7 @@ function short_answer_menu() {
     'title' => 'Score short answer questions',
     'description' => 'Score the answers from quizzes that use short answer questions.',
     'page callback' => 'short_answer_view_unscored',
-    'access arguments' => array('score any quiz', 'score own quiz'),
+    'access arguments' => array('score any quiz', 'score own quiz', 'score taken quiz answer'),
     'access callback' => 'quiz_access_multi_or',
     'type' => MENU_NORMAL_ITEM,
     'file' => 'short_answer.admin.inc',
@@ -78,7 +78,23 @@ function short_answer_quiz_question_info() {
  * Implements hook_config().
  */
 function short_answer_config() {
-  return FALSE; // No config options available for the short answer question type
+  $form['short_answer_default_max_score'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default max score'),
+    '#description' => t('Choose the default maximum score for a short answer question.'),
+    '#default_value' => variable_get('short_answer_default_max_score', 5),
+  );
+  $form['#validate'][] = 'short_answer_config_validate';
+  return $form;
+}
+
+/**
+ * Validate the long_answer config form values
+ */
+function short_answer_config_validate($form, $form_state) {
+  if ($form_state['values']['short_answer_default_max_score'] <= 0) {
+    form_set_error('short_answer_default_max_score', t('The default max score must be greater than 0'));
+  }
 }
 
 /**
@@ -144,7 +160,7 @@ function short_answer_score_an_answer($values, $update_total = TRUE) {
     ->fields(array(
       'score' => $score * $question_max_score / $quiz_max_score,
       'is_evaluated' => 1,
-      'answer_feedback' => $answer_feedback
+      'answer_feedback' => empty($answer_feedback) ? '' : $answer_feedback
     ))
     ->condition('question_nid', $nid)
     ->condition('question_vid', $vid)
@@ -226,4 +242,20 @@ function short_answer_get_answer($question_nid, $question_vid, $result_id) {
     JOIN {quiz_node_relationship} rel ON (qnr.vid = rel.parent_vid AND rel.child_vid = sa.question_vid)
     WHERE sa.question_nid = :qnid AND sa.question_vid = :qvid AND sa.result_id = :rid', array(':qnid' => $question_nid, ':qvid' => $question_vid, ':rid' => $result_id))->fetchAssoc();
   return $results ? $results : FALSE;
+}
+
+/**
+ * Implements hook_field_extra_fields().
+ */
+function short_answer_field_extra_fields() {
+  $extra['node']['short_answer'] = array(
+    'form' => array(
+      'answer' => array(
+        'label' => t('Answer'),
+        'description' => t('Provide the answer and the method by which the answer will be evaluated.'),
+        'weight' => -4,
+      ),
+    ),
+  );
+  return $extra;
 }

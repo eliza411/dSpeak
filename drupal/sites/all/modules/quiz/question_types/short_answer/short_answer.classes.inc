@@ -144,6 +144,7 @@ class ShortAnswerQuestion extends QuizQuestion {
       '#size' => 60,
       '#maxlength' => 256,
       '#required' => FALSE,
+      '#attributes' => array('autocomplete' => 'off'),
     );
 
     if (isset($rid)) {
@@ -222,7 +223,7 @@ class ShortAnswerQuestion extends QuizQuestion {
    * @see QuizQuestion#getMaximumScore()
    */
   public function getMaximumScore() {
-    return 5;
+    return variable_get('short_answer_default_max_score', 5);
   }
 
   /**
@@ -277,9 +278,16 @@ class ShortAnswerResponse extends QuizQuestionResponse {
     $query->join('node', 'n', 'qnr.nid = n.nid');
     $query->condition('a.is_evaluated', 0);
 
-    if (!user_access('score any quiz')) {
+    if (user_access('score own quiz') && user_access('score taken quiz answer')) {
+      $query->condition(db_or()->condition('n.uid', $user->uid)->condition('qnr.uid', $user->uid));
+    }
+    else if (user_access('score own quiz')) {
       $query->condition('n.uid', $user->uid);
     }
+    else if (user_access('score taken quiz answer')) {
+      $query->condition('qnr.uid', $user->uid);
+    }
+
     $results = $query->execute();
     $unscored = array();
     foreach ($results as $row) {
@@ -475,7 +483,7 @@ class ShortAnswerResponse extends QuizQuestionResponse {
    */
   public function getReportFormScore($showfeedback = TRUE, $showpoints = TRUE, $allow_scoring = FALSE) {
     $score = ($this->isEvaluated()) ? $this->getScore() : '?';
-    if (quiz_access_to_score() && $allow_scoring && $this->question->correct_answer_evaluation == ShortAnswerQuestion::ANSWER_MANUAL) {
+    if (quiz_access_to_score() && $allow_scoring) {
       return array(
         '#type' => 'textfield',
         '#default_value' => $score,
@@ -509,7 +517,7 @@ class ShortAnswerResponse extends QuizQuestionResponse {
    * @see QuizQuestionResponse#getReportFormSubmit($showfeedback, $showpoints, $allow_scoring)
    */
   public function getReportFormSubmit($showfeedback = TRUE, $showpoints = TRUE, $allow_scoring = FALSE) {
-    if (quiz_access_to_score() && $allow_scoring && $this->question->correct_answer_evaluation == ShortAnswerQuestion::ANSWER_MANUAL) {
+    if (quiz_access_to_score() && $allow_scoring) {
       return $allow_scoring ? 'short_answer_report_submit' : FALSE;
     }
     return FALSE;
@@ -521,7 +529,7 @@ class ShortAnswerResponse extends QuizQuestionResponse {
    * @see QuizQuestionResponse#getReportFormValidate($showfeedback, $showpoints, $allow_scoring)
    */
   public function getReportFormValidate($showfeedback = TRUE, $showpoints = TRUE, $allow_scoring = FALSE) {
-    if (quiz_access_to_score() && $allow_scoring && $this->question->correct_answer_evaluation == ShortAnswerQuestion::ANSWER_MANUAL) {
+    if (quiz_access_to_score() && $allow_scoring) {
       return $allow_scoring ? 'short_answer_report_validate' : FALSE;
     }
     return FALSE;

@@ -117,6 +117,10 @@ function quiz_permission() {
     'score own quiz' => array(
       'title' => t('Score own quiz'),
     ),
+    'score taken quiz answer' => array(
+      'title' => t('score taken quiz answer'),
+      'description' => t('Allows attendee to score questions needing manual evaluation.'),
+    ),
     // Allow a quiz question to be viewed outside of a test.
     'view quiz question outside of a quiz' => array(
       'title' => t('View quiz question outside of a quiz'),
@@ -150,15 +154,6 @@ function quiz_permission() {
 }
 
 /**
- * Implements hook_node_access().
- */
-function quiz_node_access($node, $op, $account) {
-  // successor of hook_access(), intentionally left empty as 'create quiz', 'edit any quiz',
-  // 'edit own quiz', 'delete own quiz' and 'delete any quiz' permissions
-  // are taken care by node module.
-}
-
-/**
  * Implements hook_admin_paths().
  */
 function quiz_admin_paths() {
@@ -189,8 +184,8 @@ function quiz_access_results($quiz, $rid = NULL) {
   // If rid is set we must make sure the result belongs to the quiz we are
   // viewing results for.
   if (isset($rid)) {
-    $res = db_query('SELECT qnr.nid FROM {quiz_node_results} qnr WHERE result_id = :result_id', array(':result_id' => $rid))->fetchField();
-    if ($res != $quiz->nid) {
+    $res = db_query('SELECT qnr.nid, qnr.uid FROM {quiz_node_results} qnr WHERE result_id = :result_id', array(':result_id' => $rid))->fetch();
+    if ($res && $res->nid != $quiz->nid) {
       return FALSE;
     }
   }
@@ -199,6 +194,12 @@ function quiz_access_results($quiz, $rid = NULL) {
   }
   if (user_access('view results for own quiz') && $user->uid == $quiz->uid) {
     return TRUE;
+  }
+  if (user_access('score taken quiz answer')) {
+    //check if the taken user is seeing his result
+    if (isset($rid) && $res && $res->uid == $user->uid) {
+      return TRUE;
+    }
   }
 }
 
@@ -231,9 +232,10 @@ function quiz_access_my_results($quiz) {
  */
 function quiz_access_my_result($rid) {
   global $user;
-  if (!user_access('view own quiz results'))
+  if (!user_access('view own quiz results')) {
     return FALSE;
-  $time_end = db_result(db_query('SELECT time_end FROM {quiz_node_results} WHERE result_id = %d AND uid = %d', $rid, $user->uid));
+  }
+  $time_end = db_query('SELECT time_end FROM {quiz_node_results} WHERE result_id = :result_id AND uid = :uid', array(':result_id' => $rid, ':uid' => $user->uid))->fetchField();
   return $time_end > 0;
 }
 
@@ -252,6 +254,9 @@ function quiz_access_to_score($quiz_creator = NULL) {
     return TRUE;
   }
   if (user_access('score own quiz') && $user->uid == $quiz_creator) {
+    return TRUE;
+  }
+  if (user_access('score taken quiz answer')) {
     return TRUE;
   }
 }
@@ -302,15 +307,6 @@ function quiz_element_info() {
   return $types;
 }
 */
-/**
- * Implements hook_init().
- *
- * Add quiz-specific styling.
- */
-function quiz_init() {
-  // @todo Use form api #attached
-  drupal_add_css(drupal_get_path('module', 'quiz') . '/quiz.css');
-}
 
 /*
  * Implementation of hook_cron().
@@ -496,14 +492,14 @@ function quiz_menu() {
   $items['node/%node/questions/browser_ahah'] = array(//TODO: Add node access instead of user access...
     'page callback' => 'quiz_browser_ahah',
     'type' => MENU_CALLBACK,
-    'access arguments' => array('create quiz'),
+    'access arguments' => array('create quiz content'),
     'file' => 'quiz.admin.inc',
   );
 
   $items['node/%node/questions/term_ahah'] = array(//TODO: Add node access instead of user access...
     'page callback' => 'quiz_categorized_term_ahah',
     'type' => MENU_CALLBACK,
-    'access arguments' => array('create quiz'),
+    'access arguments' => array('create quiz content'),
     'file' => 'quiz.admin.inc',
   );
 
@@ -536,15 +532,15 @@ function quiz_theme($existing, $type, $theme, $path) {
       'file' => 'quiz.pages.inc',
     ),
     'quiz_take_summary' => array(
-      'variables' => array('quiz' => NULL, 'questions' => NULL, 'score' => 0, 'summary' => ''),
+      'variables' => array('quiz' => NULL, 'questions' => NULL, 'score' => 0, 'summary' => '', 'rid' => NULL),
       'file' => 'quiz.pages.inc',
     ),
     'quiz_admin_summary' => array(
-      'variables' => array('quiz' => NULL, 'questions' => NULL, 'score' => NULL, 'summary' => NULL),
+      'variables' => array('quiz' => NULL, 'questions' => NULL, 'score' => NULL, 'summary' => NULL, 'rid' => NULL),
       'file' => 'quiz.admin.inc',
     ),
     'quiz_user_summary' => array(
-      'variables' => array('quiz' => NULL, 'questions' => NULL, 'score' => NULL, 'summary' => NULL),
+      'variables' => array('quiz' => NULL, 'questions' => NULL, 'score' => NULL, 'summary' => NULL, 'rid' => NULL),
       'file' => 'quiz.pages.inc',
     ),
     'quiz_progress' => array(
@@ -737,7 +733,8 @@ function quiz_insert($node) {
       'allow_skipping'              => $node->allow_skipping,
       'allow_resume'                => $node->allow_resume,
       'allow_jumping'               => $node->allow_jumping,
-      'show_passed'                 => $node->show_passed
+      'show_passed'                 => $node->show_passed,
+      'mark_doubtful'		    => $node->mark_doubtful
     ))
     ->execute();
 
@@ -750,7 +747,7 @@ function quiz_insert($node) {
 function quiz_update($node) {
   _quiz_save_user_settings($node);
   // Quiz node vid (revision) was updated.
-  if ($node->revision) {
+  if (isset($node->revision) && $node->revision) {
     // Insert a new row in the quiz_node_properties table.
     $old_auto = isset($node->auto_created);
     $node->auto_created = TRUE;
@@ -794,7 +791,8 @@ function quiz_update($node) {
         'allow_skipping'              => $node->allow_skipping,
         'allow_resume'                => $node->allow_resume,
         'allow_jumping'               => $node->allow_jumping,
-        'show_passed'                 => $node->show_passed
+        'show_passed'                 => $node->show_passed,
+        'mark_doubtful'		      => $node->mark_doubtful
        ))
       ->condition('vid', $node->vid)
       ->condition('nid', $node->nid)
@@ -804,6 +802,7 @@ function quiz_update($node) {
   _quiz_check_num_random($node);
   _quiz_check_num_always($node);
   quiz_update_max_score_properties(array($node->vid));
+  drupal_set_message(t('Some of the updated settings may not apply to quiz being taken already. To see all changes in action you need to start again.'), 'warning');
 }
 
 /**
@@ -811,6 +810,18 @@ function quiz_update($node) {
  */
 function quiz_field_extra_fields() {
   $extra['node']['quiz'] = array(
+    'display' => array(
+      'take' => array(
+        'label' => t('Take quiz button'),
+        'description' => t('The take button.'),
+        'weight' => 10,
+      ),
+      'stats' => array(
+	'label' => t('Quiz summary'),
+	'description' => t('Quiz summary'),
+	'weight' => 9,
+      ),
+    ),
     'form' => array(
       'taking' => array(
         'label' => t('Taking options'),
@@ -927,6 +938,7 @@ function _quiz_get_node_defaults() {
     'show_passed' => 1,
     'quiz_open' => _quiz_form_prepare_date(),
     'quiz_close' => _quiz_form_prepare_date(NULL, variable_get('quiz_default_close', 30)),
+    'mark_doubtful' => 0,
   );
 }
 
@@ -962,7 +974,6 @@ function quiz_load($nodes) {
     $fetched_additions = (array) $query->execute()->fetch();
 
     $additions = ($fetched_additions) ? (object) ($fetched_additions += $default_additions) : NULL;
-
     // Fetching result options.
     $query = db_select('quiz_node_result_options', 'qnro');
     $query->fields('qnro');
@@ -1133,7 +1144,12 @@ function quiz_form(&$node, &$form_state) {
     '#default_value' => $node->repeat_until_correct,
     '#description' => t('Require the user to re-try the question until they answer it correctly.'),
   );
-
+  $form['taking']['mark_doubtful'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Mark Doubtful'),
+    '#default_value' => $node->mark_doubtful,
+    '#description' => t('Allow user to mention if they are not sure about the answer'),
+  );
   $form['taking']['show_passed'] = array(
     '#type' => 'checkbox',
     '#title' => t('Show passed status'),
@@ -1782,7 +1798,7 @@ function quiz_get_pass_rate($nid, $vid) {
 function quiz_update_quiz_question_relationship($old_quiz_vid, $new_quiz_vid, $quiz_nid) {
   // query for questions in previous version
   $result = db_select('quiz_node_relationship', 'qnr')
-    ->fields('qnr', array('parent_nid','child_nid', 'child_vid', 'question_status', 'weight', 'max_score'))
+    ->fields('qnr', array('parent_nid','child_nid', 'child_vid', 'question_status', 'weight', 'max_score', 'auto_update_max_score'))
     ->condition('parent_nid', $quiz_nid)
     ->condition('parent_vid', $old_quiz_vid)
     ->condition('question_status', QUESTION_NEVER, '!=')
@@ -1790,7 +1806,7 @@ function quiz_update_quiz_question_relationship($old_quiz_vid, $new_quiz_vid, $q
   // only proceed if query returned data
   if ($result->rowCount()) {
     $insert_query = db_insert('quiz_node_relationship')
-      ->fields(array('parent_nid', 'parent_vid', 'child_nid', 'child_vid', 'question_status', 'weight', 'max_score'));
+      ->fields(array('parent_nid', 'parent_vid', 'child_nid', 'child_vid', 'question_status', 'weight', 'max_score', 'auto_update_max_score'));
     while ($quiz_question = $result->fetchAssoc()) {
       $insert_query->values(array(
         'parent_nid' => $quiz_nid,
@@ -1799,18 +1815,19 @@ function quiz_update_quiz_question_relationship($old_quiz_vid, $new_quiz_vid, $q
         'child_vid' => $quiz_question['child_vid'],
         'question_status' => $quiz_question['question_status'],
         'weight' => $quiz_question['weight'],
-        'max_score' => $quiz_question['max_score']
+        'max_score' => $quiz_question['max_score'],
+        'auto_update_max_score' => $quiz_question['auto_update_max_score'],
       ));
     }
     $insert_query->execute();
   }
-  
+
   /* Update terms if any */
   $result = db_select('quiz_terms', 'qt')
     ->fields('qt', array('nid', 'tid', 'weight', 'max_score', 'number'))
     ->condition('vid', $old_quiz_vid)
     ->execute();
-  // only proceed if query returned data    
+  // only proceed if query returned data
   if ($result->rowCount()) {
     $insert_query = db_insert('quiz_terms')
       ->fields(array('nid', 'vid', 'tid', 'weight', 'max_score', 'number'));
@@ -1821,12 +1838,12 @@ function quiz_update_quiz_question_relationship($old_quiz_vid, $new_quiz_vid, $q
         'tid' => $quiz_term['tid'],
         'weight' => $quiz_term['weight'],
         'max_score' => $quiz_term['max_score'],
-        'number' => $quiz_term['number'],        
+        'number' => $quiz_term['number'],
       ));
     }
     $insert_query->execute();
   }
-  
+
   /*$sql = "INSERT INTO {quiz_terms} (nid, vid, tid, weight, max_score, number)
           SELECT qt.nid, %d, qt.tid, qt.weight, qt.max_score, qt.number
           FROM {quiz_terms} qt
@@ -1862,7 +1879,7 @@ function quiz_take_quiz($quiz) {
 
   // Make sure we use the same revision of the quiz throughout the quiz taking
   // session.
-  if (isset($_SESSION['quiz_' . $quiz->nid]['quiz_vid']) && $quiz->vid != $_SESSION['quiz_' . $quiz->nid]['quiz_vid']) {
+  if (isset($_SESSION['quiz_' . $quiz->nid]['quiz_vid']) && $quiz->vid != $_SESSION['quiz_' . $quiz->nid]['quiz_vid'] && variable_get('quiz_auto_revisioning')) {
     $quiz = node_load($quiz->nid, $_SESSION['quiz_' . $quiz->nid]['quiz_vid']);
   }
 
@@ -1912,6 +1929,11 @@ function quiz_take_quiz($quiz) {
   elseif (isset($_SESSION['quiz_' . $quiz->nid]['question_duration']) && $_SESSION['quiz_' . $quiz->nid]['question_duration'] < -2) {
     // Timed quiz where the time has gone out 2 seconds ago. Do not store the users results...
   }
+  // Workaround to show question and feedback in separage pages, when the
+  // feedback time it set to show after each questions
+  elseif ($_POST['op'] == t('Next question')) {
+    drupal_goto("node/{$quiz->nid}/take");
+  }
   // We maintain two lists: previous questions and upcomming questions.
   // When we go backward, we pop one from the previous and prepend it to the
   // upcomming.
@@ -1950,10 +1972,15 @@ function quiz_take_quiz($quiz) {
       $path = drupal_get_path('module', 'quiz');
       require_once DRUPAL_ROOT . '/' . $path . '/quiz.pages.inc';
       if ($report) {
-        $report_form = drupal_get_form('quiz_report_form', array($report));
-        $_SESSION['quiz_' . $quiz->nid]['feedback'] = rawurlencode(drupal_render($report_form));
+        $report_form = drupal_get_form('quiz_report_form', array($report), TRUE, TRUE, TRUE);
+        $report_form['op'] = array(
+          '#type' => 'submit',
+          '#value' => t('Next question'),
+        );
+        return $report_form;
       }
     }
+
     if ($quiz->repeat_until_correct && $_POST['op'] != t('Back') && $q_passed_validation === TRUE) {
       // If the question was answered incorrectly, repeat it
       if ($result && !$result->is_correct && $result->is_evaluated) {
@@ -2142,8 +2169,15 @@ function quiz_take_quiz($quiz) {
     else {
       // Get the results and summary text for this quiz.
       $summary = _quiz_get_summary_text($quiz, $score);
+      $data = array(
+        'quiz' => $quiz,
+        'questions' => $questions,
+        'score' => $score,
+        'summary' => $summary,
+        'rid' => $_SESSION['quiz_' . $quiz->nid]['result_id'],
+      );
       // Get the themed summary page.
-      $content['body']['#markup'] = theme('quiz_take_summary', array('quiz' => $quiz, 'questions' => $questions, 'score' => $score, 'summary' => $summary));
+      $content['body']['#markup'] = theme('quiz_take_summary', $data);
     }
     if ($score['is_evaluated']) {
       _quiz_maintain_results($quiz, $_SESSION['quiz_' . $quiz->nid]['result_id']);
@@ -2312,6 +2346,7 @@ function quiz_store_question_result($quiz, $result, $options) {
         'points_awarded' => $points,
         'answer_timestamp' => REQUEST_TIME,
         'is_skipped' => (int) $result->is_skipped,
+        'is_doubtful' => (int) $result->is_doubtful,
         'tid' => ($quiz->randomization == 3 && $result->tid) ? $result->tid : 0,
       ));
 
@@ -2323,7 +2358,7 @@ function quiz_store_question_result($quiz, $result, $options) {
   }
   else {
      $insert = db_insert('quiz_node_results_answers')
-      ->fields(array('question_nid', 'question_vid', 'result_id', 'is_correct', 'points_awarded', 'answer_timestamp', 'is_skipped',    'number', 'tid'))
+      ->fields(array('question_nid', 'question_vid', 'result_id', 'is_correct', 'points_awarded', 'answer_timestamp', 'is_skipped', 'is_doubtful', 'number', 'tid'))
       ->values(array(
         'question_nid' => $result->nid,
         'question_vid' => $result->vid,
@@ -2332,6 +2367,7 @@ function quiz_store_question_result($quiz, $result, $options) {
         'points_awarded' => $points,
         'answer_timestamp' => REQUEST_TIME,
         'is_skipped' => (int) $result->is_skipped,
+        'is_doubtful' => (int) $result->is_doubtful,
         'number' => $options['question_data']['number'],
         'tid' => ($quiz->randomization == 3 && $result->tid) ? $result->tid : 0,
       ))
@@ -2378,7 +2414,7 @@ function quiz_end_scoring($quiz, $rid) {
 function quiz_end_actions($quiz, $score, $session_data) {
   // Call hook_quiz_finished().
   module_invoke_all('quiz_finished', $quiz, $score, $session_data);
-  
+
   // Lets piggy back here to perform the quiz defined action since were done
   // with this quiz.
   // We will verify that there is an associated action with this quiz and then
@@ -2390,7 +2426,7 @@ function quiz_end_actions($quiz, $score, $session_data) {
     // parameters and perform that function (action) for you.
     actions_do($quiz->aid, $quiz, $score, $session_data);
   }
-  
+
   return $score;
 }
 
@@ -2447,8 +2483,7 @@ function quiz_quiz_finished($quiz, $score, $session_data) {
  * Performs actions like sending quiz results over email at the end of quiz.
  */
 function quiz_quiz_scored($quiz, $score, $rid) {
-  $sql = 'SELECT u.uid, u.mail FROM {users} u JOIN {quiz_node_results} qnr ON u.uid = qnr.uid WHERE result_id = %d';
-  $taker = db_fetch_object(db_query($sql, $rid));
+  $taker = db_query('SELECT u.uid, u.mail FROM {users} u JOIN {quiz_node_results} qnr ON u.uid = qnr.uid WHERE result_id = :rid', array(':rid' => $rid))->fetch();
   if (variable_get('quiz_email_results', 0) && $taker->uid != 0 && $score['is_evaluated']) {
     drupal_mail('quiz', 'notice', $taker->mail, NULL, array($quiz, $score, $rid, 'taker'));
     drupal_set_message(t('The results has been sent to the users e-mail address.'));
@@ -2459,7 +2494,7 @@ function quiz_quiz_scored($quiz, $score, $rid) {
   if ($quiz->has_userpoints && $taker->uid != 0 && $score['is_evaluated']) {
 
     //Looking up the tid of the selected Userpoint vocabulary
-    $selected_tid = db_query("SELECT ti.tid 
+    $selected_tid = db_query("SELECT ti.tid
                 FROM {taxonomy_index} ti
                 JOIN {taxonomy_term_data} td
                   ON td.tid = ti.tid AND td.vid = :vid
@@ -2618,21 +2653,24 @@ function quiz_update_max_score_properties($quizzes_to_update) {
     ->condition('vid', $quizzes_to_update, 'IN')
     ->execute();
 
-  db_update('quiz_node_results')
-    ->expression('score',
-      'ROUND(
-        100 * (
-          SELECT COALESCE (SUM(a.points_awarded), 0)
-          FROM {quiz_node_results_answers} a
-          WHERE a.result_id = {quiz_node_results}.result_id
-        ) / (
-          SELECT max_score
-          FROM {quiz_node_properties} qnp
-          WHERE qnp.vid = {quiz_node_results}.vid
-        )
-      )')
-    ->condition('vid', $quizzes_to_update, 'IN')
-    ->execute();
+  $results_to_update = db_query('SELECT vid FROM {quiz_node_properties} WHERE vid IN (:vid) AND max_score <> :max_score', array(':vid' => $quizzes_to_update, ':max_score' => 0))->fetchCol();
+  if (!empty($results_to_update)) {
+    db_update('quiz_node_results')
+      ->expression('score',
+	  'ROUND(
+	  100 * (
+	    SELECT COALESCE (SUM(a.points_awarded), 0)
+	    FROM {quiz_node_results_answers} a
+	    WHERE a.result_id = {quiz_node_results}.result_id
+	  ) / (
+	    SELECT max_score
+	    FROM {quiz_node_properties} qnp
+	    WHERE qnp.vid = {quiz_node_results}.vid
+	  )
+	)')
+      ->condition('vid', $results_to_update, 'IN')
+      ->execute();
+  }
 }
 
 /**
@@ -2948,7 +2986,7 @@ function _quiz_build_categorized_question_list($quiz) {
   }
   $total_count = 0;
   foreach ($terms as $term) {
-    
+
     $query = db_select('node','n');
     $query->join('taxonomy_index','tn','n.nid = tn.nid');
     $query->fields('n', array('nid','vid'));
@@ -2961,9 +2999,9 @@ function _quiz_build_categorized_question_list($quiz) {
     }
     $query->range(0,$term->number);
     $query->orderBy('RAND()');
-    
+
     $result = $query->execute();
-    $count = 0; 
+    $count = 0;
     while ($question = $result->fetchAssoc()) {
       $count++;
       $question['tid'] = $term->tid;
@@ -2994,7 +3032,7 @@ function _quiz_get_terms($vid) {
     JOIN {taxonomy_term_data} td ON qt.tid = td.tid
     WHERE qt.vid = :vid
     ORDER BY qt.weight';
-  return db_query($sql, array(':vid' => $vid))->fetchAll(); 
+  return db_query($sql, array(':vid' => $vid))->fetchAll();
 }
 
 /**
@@ -3021,6 +3059,9 @@ function quiz_node_map($node, $include_question = TRUE) {
   $new_question->question_status = isset($node->question_status) ? $node->question_status : QUESTION_NEVER;
   if (isset($node->max_score)) {
     $new_question->max_score = $node->max_score;
+  }
+  if (isset($node->auto_update_max_score)) {
+    $new_question->auto_update_max_score = $node->auto_update_max_score;
   }
   $new_question->weight = $node->weight;
   return $new_question;
@@ -3068,7 +3109,7 @@ function quiz_set_questions(&$quiz, $questions, $set_new_revision = FALSE) {
   }
 
   $qnr_insert = db_insert('quiz_node_relationship')
-    ->fields(array('parent_nid', 'parent_vid', 'child_nid', 'child_vid', 'question_status', 'weight', 'max_score'));
+    ->fields(array('parent_nid', 'parent_vid', 'child_nid', 'child_vid', 'question_status', 'weight', 'max_score', 'auto_update_max_score'));
   foreach ($questions as $question) {
     if ($question->state != QUESTION_NEVER) {
       $qnr_insert->values(array(
@@ -3079,6 +3120,7 @@ function quiz_set_questions(&$quiz, $questions, $set_new_revision = FALSE) {
         'question_status' => $question->state,
         'weight' => $question->weight,
         'max_score' => (int) $question->max_score,
+        'auto_update_max_score' => (int) $question->auto_update_max_score,
       ));
     }
   }
@@ -3193,7 +3235,7 @@ function _quiz_delete_old_in_progress($quiz, $uid) {
           AND qnr.vid < :vid', array(':uid' => $uid, ':nid' => $quiz->nid, ':time_end' => 1, ':vid' => $quiz->vid));
   $rids = array();
   while ($rid = $res->fetchField()) {
-    $rids[] = $rid; 
+    $rids[] = $rid;
   }
   quiz_delete_results($rids);
 }
@@ -3570,7 +3612,7 @@ function quiz_get_questions($quiz_nid = NULL, $quiz_vid = NULL, $include_all_typ
   $query = db_select('node', 'n');
   $query->fields('n', array('nid', 'type'));
   $query->fields('nr', array('vid', 'title'));
-  $query->fields('qnr', array('question_status', 'weight', 'max_score'));
+  $query->fields('qnr', array('question_status', 'weight', 'max_score', 'auto_update_max_score'));
   $query->addField('n', 'vid', 'latest_vid');
   $query->join('node_revision', 'nr', 'n.nid = nr.nid');
   $query->leftJoin('quiz_node_relationship', 'qnr', 'nr.vid = qnr.child_vid');
@@ -3616,44 +3658,6 @@ function quiz_get_questions($quiz_nid = NULL, $quiz_vid = NULL, $include_all_typ
   }
 
   return $questions;
-}
-
-
-/**
- * Get all results, or results for a given user and/or quiz.
- *
- * @param $nid
- *   Node ID for the quiz.
- * @param $uid
- *   Optional user ID to constrain results to just that user.
- *
- * @return
- *   A list of results.
- */
-function _quiz_get_results($nid = '', $uid = 0) {
-  $results = array();
-  $args = array();
-  $sql = "SELECT n.nid, n.title, u.name, u.uid, qnrs.result_id, qnrs.score, qnrs.time_start, qnrs.time_end, qnp.pass_rate
-          FROM {node} n
-          INNER JOIN {quiz_node_results} qnrs ON qnrs.nid = n.nid
-          INNER JOIN {users} u ON u.uid = qnrs.uid
-          INNER JOIN {quiz_node_properties} qnp ON qnrs.vid = qnp.vid
-          WHERE n.type = 'quiz'";
-  if ($nid) {
-    $sql .= " AND qnrs.nid = %d";
-    $args[] = $nid;
-  }
-  if ($uid != 0) {
-    $sql .= " AND qnrs.uid = %d";
-    $args[] = $uid;
-  }
-  $sql .= " ORDER BY qnrs.result_id DESC";
-  // TODO Please convert this statement to the D7 database API syntax.
-  $dbresult = db_query(db_rewrite_sql($sql), $args);
-  while ($line = db_fetch_array($dbresult)) {
-    $results[$line['result_id']] = $line;
-  }
-  return $results;
 }
 
 /**
@@ -4004,7 +4008,7 @@ function _quiz_user_results_access($user_id) {
  */
 function quiz_copy_questions($node) {
   // Find original questions.
-  $query = db_query('SELECT child_nid, child_vid, question_status, weight, max_score FROM {quiz_node_relationship}
+  $query = db_query('SELECT child_nid, child_vid, question_status, weight, max_score, auto_update_max_score FROM {quiz_node_relationship}
           WHERE parent_vid = :parent_vid', array(':parent_vid' => $node->translation_source->vid));
   foreach ($query as $res_o) {
     $original_question = node_load($res_o->child_nid);
@@ -4026,9 +4030,9 @@ function quiz_copy_questions($node) {
 
     // Save the relationship between the new question and the quiz.
     $sql = 'INSERT INTO {quiz_node_relationship}
-            (parent_nid, parent_vid, child_nid, child_vid, question_status, weight, max_score)
-            VALUES(:parent_nid, :parent_vid, :child_nid, :child_vid, :question_status, :weight, :max_score)';
-    db_query($sql, array(':parent_nid' => $node->nid, ':parent_vid' => $node->vid, ':child_nid' => $original_question->nid, ':child_vid' => $original_question->vid, ':question_status' => $res_o->question_status, ':weight' => $res_o->weight, ':max_score' => $res_o->max_score));
+            (parent_nid, parent_vid, child_nid, child_vid, question_status, weight, max_score, auto_update_max_score)
+            VALUES(:parent_nid, :parent_vid, :child_nid, :child_vid, :question_status, :weight, :max_score, :auto_update_max_score)';
+    db_query($sql, array(':parent_nid' => $node->nid, ':parent_vid' => $node->vid, ':child_nid' => $original_question->nid, ':child_vid' => $original_question->vid, ':question_status' => $res_o->question_status, ':weight' => $res_o->weight, ':max_score' => $res_o->max_score, ':auto_update_max_score' => $res_o->auto_update_max_score));
   }
 }
 

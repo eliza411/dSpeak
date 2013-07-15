@@ -30,7 +30,14 @@ function quiz_user_results($result_id) {
     $questions = _quiz_get_answers($quiz, $result_id);
     $score = quiz_calculate_score($quiz, $result_id);
     $summary = _quiz_get_summary_text($quiz, $score);
-    return theme('quiz_user_summary', array('quiz' => $quiz, 'questions' => $questions, 'score' => $score, 'summary' => $summary));
+    $data = array(
+      'quiz' => $quiz,
+      'questions' => $questions,
+      'score' => $score,
+      'summary' => $summary,
+      'rid' => $result_id,
+    );
+    return theme('quiz_user_summary', $data);
   }
   else {
     drupal_not_found();
@@ -78,7 +85,7 @@ function quiz_report_form($form, $form_state, $questions, $showpoints = TRUE, $s
       '#type' => 'submit',
       '#submit' => array('quiz_report_form_submit'),
       '#validate' => array('quiz_report_form_validate'),
-      '#value' => t('Submit'),
+      '#value' => t('Save Score'),
     );
   }
   return $form;
@@ -116,6 +123,7 @@ function quiz_report_form_submit($form, &$form_state) {
   /* We go through the form state values and submit all
    * questiontypes with validation functions declared.
    */
+  global $user;
   foreach ($form_state['values'] as $key => $q_values) {
     // Questions has numeric keys in the report form
     if (!is_numeric($key)) {
@@ -132,7 +140,7 @@ function quiz_report_form_submit($form, &$form_state) {
 
     // Load the quiz
     if (!isset($quiz)) {
-      $result = db_query('SELECT nid, vid FROM {quiz_node_results} WHERE result_id = :result_id', array(':result_id' => $q_values['rid']))->fetchObject();
+      $result = db_query('SELECT nid, uid, vid FROM {quiz_node_results} WHERE result_id = :result_id', array(':result_id' => $q_values['rid']))->fetchObject();
       $quiz = node_load($result->nid, $result->vid);
       $rid = $q_values['rid'];
     }
@@ -165,7 +173,11 @@ function quiz_report_form_submit($form, &$form_state) {
   module_invoke_all('quiz_scored', $quiz, $score_data, $rid);
 
   drupal_set_message(t('The scoring data you provided has been saved.') . $add);
-  $form_state['redirect'] = 'node/' . $quiz->nid . '/results';
+  if (user_access('score taken quiz answer') && !user_access('view any quiz results')) {
+    if ($result && $result->uid == $user->uid) {
+      $form_state['redirect'] = 'node/' . $quiz->nid . '/results/' . $rid;
+    }
+  }
 }
 
 /**
@@ -276,7 +288,7 @@ function quiz_my_results($node) {
   $res = db_query('
     SELECT qnp.nid, qnp.pass_rate, qnrs.result_id, qnrs.time_start, qnrs.time_end, qnrs.score
     FROM {quiz_node_properties} qnp
-    INNER JOIN {quiz_node_results} qnrs ON qnrs.vid = qnp.vid 
+    INNER JOIN {quiz_node_results} qnrs ON qnrs.vid = qnp.vid
     WHERE qnrs.uid = :uid AND qnrs.nid = :nid AND qnrs.is_evaluated = 1
     ORDER BY qnrs.result_id DESC',
     array(':uid' => $user->uid, ':nid' => $node->nid)
@@ -413,7 +425,12 @@ function theme_quiz_my_results_for_quiz($variables) {
  * @ingroup themeable
  */
 function theme_quiz_score_correct() {
-  return theme('image', array('path' => drupal_get_path('module', 'quiz') . '/images/correct.gif', 'width' => t('correct')));
+  $variables = array(
+    'path' => drupal_get_path('module', 'quiz') . '/images/correct.gif',
+    'alt' => t('correct'),
+    'title' => t('correct'),
+  );
+  return theme('image', $variables);
 }
 
 /**
@@ -422,7 +439,12 @@ function theme_quiz_score_correct() {
  * @ingroup themeable
  */
 function theme_quiz_score_incorrect() {
-  return theme('image', array('path' => drupal_get_path('module', 'quiz') . '/images/incorrect.gif', 'width' => t('incorrect')));
+  $variables = array(
+    'path' => drupal_get_path('module', 'quiz') . '/images/incorrect.gif',
+    'alt' => t('incorrect'),
+    'title' => t('incorrect'),
+  );
+  return theme('image', $variables);
 }
 
 /**
@@ -512,6 +534,7 @@ function theme_quiz_take_summary($variables) {
   $questions = $variables['questions'];
   $score = $variables['score'];
   $summary = $variables['summary'];
+  $rid =  $variables['rid'];
   // Set the title here so themers can adjust.
   drupal_set_title($quiz->title);
 
@@ -519,7 +542,12 @@ function theme_quiz_take_summary($variables) {
   $output = '';
   if (!empty($score['possible_score'])) {
     if (!$score['is_evaluated']) {
-      $msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final.', array('@quiz' => QUIZ_NAME));
+      if (user_access('score taken quiz answer')) {
+        $msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final. <a class="self-score" href="!result_url">Click here</a> to give scores on your own.', array('@quiz' => QUIZ_NAME, '!result_url' => url('node/' . $quiz->nid . '/results/' . $rid)));
+      }
+      else {
+        $msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final.', array('@quiz' => QUIZ_NAME));
+      }
       drupal_set_message($msg, 'warning');
     }
     $output .= '<div id="quiz_score_possible">' . t('You got %num_correct of %question_count possible points.', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) . '</div>' . "\n";
@@ -560,12 +588,17 @@ function theme_quiz_user_summary($variables) {
   $questions = $variables['questions'];
   $score = $variables['score'];
   $summary = $variables['summary'];
+  $rid = $variables['rid'];
   // Set the title here so themers can adjust.
   drupal_set_title($quiz->title);
 
   if (!$score['is_evaluated']) {
-    $msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final.', array('@quiz' => QUIZ_NAME));
-    drupal_set_message($msg, 'status');
+    if (user_access('score taken quiz answer')) {
+      $msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final. <a class="self-score" href="!result_url">Click here</a> to give scores on your own.', array('@quiz' => QUIZ_NAME, '!result_url' => url('node/' . $quiz->nid . '/results/' . $rid)));
+    }
+    else {
+      $msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final.', array('@quiz' => QUIZ_NAME));
+    }
   }
 
   // Display overall result.
@@ -584,7 +617,8 @@ function theme_quiz_user_summary($variables) {
     $output .= '<div id="quiz_summary">' . $summary['result'] . '</div>' . "\n";
   }
   // Get the feedback for all questions.
-  $output .= drupal_render(drupal_get_form('quiz_report_form', $questions, FALSE, TRUE));
+  $form = drupal_get_form('quiz_report_form', $questions, FALSE, TRUE);
+  $output .= drupal_render($form);
   return $output;
 }
 
@@ -612,7 +646,7 @@ function theme_quiz_single_question_node($variables) {
   $node = $variables['question_node'];
   // This might seem meaningless, but it is designed this way to allow themes to add more
   // meaningful stuff here...
-  return drupal_render($node->body) . drupal_render($node->content['body']);
+  return drupal_render($node->content['body']);
 }
 
 /**

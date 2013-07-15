@@ -380,7 +380,14 @@ function quiz_admin_results($quiz, $rid) {
   // Lets add the quiz title to the breadcrumb array.
   $breadcrumb[] = l($quiz->title, 'admin/quiz/reports/results/' . $quiz->nid);
   //drupal_set_breadcrumb($breadcrumb);
-  return theme('quiz_admin_summary', array('quiz' => $quiz, 'questions' => $questions, 'score' => $score, 'summary' => $summary));
+  $data = array(
+    'quiz' => $quiz,
+    'questions' => $questions,
+    'score' => $score,
+    'summary' => $summary,
+    'rid' => $rid
+  );
+  return theme('quiz_admin_summary', $data);
 }
 
 /**
@@ -655,8 +662,8 @@ function _quiz_categorized_update_terms(&$form, &$form_state) {
  */
 function _quiz_categorized_add_term($form, $form_state) {
   drupal_set_message(t('The term was added'));
-  // Needs to be set to avoid error-message from db:  
-  $form_state['values']['weight'] = 0;  
+  // Needs to be set to avoid error-message from db:
+  $form_state['values']['weight'] = 0;
   drupal_write_record('quiz_terms', $form_state['values']);
   return $form_state['values']['number'];
 }
@@ -738,7 +745,7 @@ function quiz_questions_form($form, $form_state, $quiz) {
     $filters = $form_state['values']['browser']['table']['header']['filters'];
     _quiz_questions_store_filters($filters);
   }
-  
+
   $types = _quiz_get_question_types();
 
   _quiz_add_fields_for_creating_questions($form, $types, $quiz);
@@ -826,7 +833,7 @@ function _quiz_add_fields_for_creating_questions(&$form, &$types, &$quiz) {
     '#type' => 'fieldset',
     '#title' => t('Create new question'),
     '#collapsible' => TRUE,
-    '#collapsed' => FALSE,
+    '#collapsed' => TRUE,
   );
 
   $url_query = drupal_get_destination();
@@ -921,6 +928,7 @@ function _quiz_get_questions_from_form_state(&$form_state, &$questions_to_add) {
     }
     $vids[] = $cur_question->vid = $matches[2];
     $cur_question->max_score = intval($form_state['post']['max_scores'][$id]);
+    $cur_question->auto_update_max_score = intval($form_state['post']['auto_update_max_scores'][$id]);
     $cur_question->weight = intval($value);
     $cur_question->staying = $form_state['post']['stayers'][$id] === '1';
     $cur_question->question_status = QUESTION_ALWAYS;
@@ -1033,6 +1041,7 @@ function _quiz_add_hidden_questions(&$questions, &$hidden_questions, &$form_stat
 function _quiz_add_questions_to_form(&$form, &$questions, &$quiz, &$question_types) {
   $form['question_list']['weights'] = array('#tree' => TRUE);
   $form['question_list']['max_scores'] = array('#tree' => TRUE);
+  $form['question_list']['auto_update_max_scores'] = array('#tree' => TRUE);
   $form['question_list']['stayers'] = array('#tree' => TRUE);
   $form['question_list']['revision'] = array('#tree' => TRUE);
   if ($quiz->randomization == 2) {
@@ -1056,6 +1065,7 @@ function _quiz_add_questions_to_form(&$form, &$questions, &$quiz, &$question_typ
         '#type' => 'textfield',
         '#size' => 2,
         '#maxlength' => 2,
+        '#disabled' => $question->auto_update_max_score,
         '#default_value' => isset($question->max_score) ? $question->max_score : 0,
       );
     }
@@ -1065,6 +1075,11 @@ function _quiz_add_questions_to_form(&$form, &$questions, &$quiz, &$question_typ
         '#value' => isset($question->max_score) ? $question->max_score : 0,
       );
     }
+    
+    $form[$fieldset]['auto_update_max_scores'][$id] = array(
+      '#type' => 'checkbox',
+      '#default_value' => isset($question->auto_update_max_score) ? $question->auto_update_max_score : 0,
+    );
 
     // Add checkboxes to remove questions in js disabled browsers...
     $form[$fieldset]['stayers'][$id] = array(
@@ -1203,7 +1218,7 @@ function _quiz_question_browser_form(&$hidden_questions, $questions, $form_state
 
   $browser['header'] = array('#theme' => 'quiz_questions_browser_header');
   $browser['body'] = array('#theme' => 'quiz_questions_browser_body');
-  
+
   //Build filter part of form:
   _quiz_question_browser_add_filter_fields($browser['header'], $question_types, $quiz);
 
@@ -1265,7 +1280,7 @@ function _quiz_question_browser_form(&$hidden_questions, $questions, $form_state
   $query->limit(10);
   $query->orderByHeader($browser['header']['#header']);
   $options = array();
-  
+
   foreach ($query->execute() as $res_o) {
     $id = $res_o->nid . '-' . $res_o->vid;
     // Add $id to hidden_questions, this way quiz_questions_form knows that it has to add a invisible row for this question.
@@ -1494,7 +1509,7 @@ function quiz_questions_form_validate($form, $form_state) {
  *   Array of boolean values determining if the question is compulsory or not.
  * @return array set of questions after updating
  */
-function _quiz_update_items($quiz, $weight_map, $max_scores, $is_new_revision, $refreshes, $stayers, $compulsories = NULL) {
+function _quiz_update_items($quiz, $weight_map, $max_scores, $auto_update_max_scores, $is_new_revision, $refreshes, $stayers, $compulsories = NULL) {
   $questions = array();
   foreach ($weight_map as $id => $weight) {
     // Do not add hidden questions to $questions
@@ -1518,9 +1533,10 @@ function _quiz_update_items($quiz, $weight_map, $max_scores, $is_new_revision, $
     }
     else {
       $question->state = QUESTION_ALWAYS;
-    }
+    }     
     $question->weight = $weight;
     $question->max_score = $max_scores[$id];
+    $question->auto_update_max_score = $auto_update_max_scores[$id];
     $question->refresh = (isset($refreshes[$id]) && $refreshes[$id] == 1);
 
     // Add item as an object in the questions array.
@@ -1557,6 +1573,7 @@ function quiz_questions_form_submit($form, &$form_state) {
 
   $weight_map = $form_state['values']['weights'];
   $max_scores = $form_state['values']['max_scores'];
+  $auto_update_max_scores = $form_state['values']['auto_update_max_scores'];
   $refreshes = isset($form_state['values']['revision']) ? $form_state['values']['revision'] : NULL;
   $stayers = $form_state['values']['stayers'];
   $compulsories = isset($form_state['values']['compulsories']) ? $form_state['values']['compulsories'] : NULL;
@@ -1569,7 +1586,7 @@ function quiz_questions_form_submit($form, &$form_state) {
 
 
   // Store what questions belong to the quiz
-  $questions = _quiz_update_items($quiz, $weight_map, $max_scores, $is_new_revision, $refreshes, $stayers, $compulsories);
+  $questions = _quiz_update_items($quiz, $weight_map, $max_scores, $auto_update_max_scores, $is_new_revision, $refreshes, $stayers, $compulsories);
 
   // If using random questions and no term ID is specified, make sure we have enough.
   if (empty($term_id)) {
@@ -1775,6 +1792,7 @@ function theme_quiz_admin_summary($variables) {
   $questions = $variables['questions'];
   $score = $variables['score'];
   $summary = $variables['summary'];
+  $rid = $variables['rid'];
   // To adjust the title uncomment and edit the line below:
   // drupal_set_title(check_plain($quiz->title));
   if (!$score['is_evaluated']) {
@@ -1794,7 +1812,8 @@ function theme_quiz_admin_summary($variables) {
 
   // Get the feedback for all questions.
   require_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'quiz') . '/quiz.pages.inc';
-  $output .= drupal_render(drupal_get_form('quiz_report_form', $questions, TRUE, TRUE, TRUE));
+  $report_form = drupal_get_form('quiz_report_form', $questions, TRUE, TRUE, TRUE);
+  $output .= drupal_render($report_form);
   return $output;
 }
 
@@ -1806,7 +1825,7 @@ function theme_question_selection_table($variables) {
   drupal_add_tabledrag('question-list', 'order', 'sibling', 'question-list-weight', NULL, NULL, TRUE);
 
   // Building headers
-  $headers = array(t('Question'), t('Type'), t('Actions'), t('Update'), t('Max score'));
+  $headers = array(t('Question'), t('Type'), t('Actions'), t('Update'), t('Max score'), t('Auto update max score'));
   if (isset($form['compulsories'])) {
     $headers[] = t('Compulsory');
   }
@@ -1822,7 +1841,7 @@ function theme_question_selection_table($variables) {
     }
     // Make sure the same fields aren't rendered twice
     unset($form['types'], $form['view_links'], $form['remove_links'], $form['stayers']);
-    unset($form['max_scores'], $form['revision'], $form['weights'], $form['titles'], $form['compulsories']);
+    unset($form['max_scores'], $form['auto_update_max_scores'], $form['revision'], $form['weights'], $form['titles'], $form['compulsories']);
   }
   $html_attr = array('id' => 'question-list');
 
@@ -1954,7 +1973,7 @@ function quiz_results_manage_results_form($form, &$form_state, $quiz) {
       'method' => 'replace',
     ),
   );
-  
+
   $form['table'] = array('#theme' => 'quiz_browser', '#tree' => TRUE);
   $browser = &$form['table'];
 
@@ -1966,7 +1985,7 @@ function quiz_results_manage_results_form($form, &$form_state, $quiz) {
 
   // Build filter part of form:
   $browser['header'] = array('#theme' => 'quiz_results_browser_header');
-  
+
   // Browsers table header
   $browser['header']['#header'] = array(
     array('data' => t('Username'), 'field' => 'u.uid'),
@@ -1975,7 +1994,7 @@ function quiz_results_manage_results_form($form, &$form_state, $quiz) {
     array('data' => t('Score'), 'field' => 'score'),
     array('data' => t('Evaluated'), 'field' => 'evaluated'),
   );
-  
+
   _quiz_results_mr_add_filter_fields($browser['header'], $quiz);
 
   // Add querystring recieved via ajax to the $_GET array...
@@ -1984,7 +2003,7 @@ function quiz_results_manage_results_form($form, &$form_state, $quiz) {
   }
 
   $browser['body'] = array('#theme' => 'quiz_results_browser_body');
-  
+
   $res = _quiz_results_mr_data_provider($browser['header']['#header'], $quiz);
 
   // build data part of form
@@ -2079,7 +2098,7 @@ function _quiz_results_mr_data_provider($header, $quiz) {
  * _quiz_results_mr_data_provider select statement
  *
  * TODO: Rewrite to use db_select
- * 
+ *
  * @see _quiz_results_mr_data_provider()
  *
  * @param $filter_params
@@ -2314,7 +2333,7 @@ function _quiz_delete_results($rid, $nid = NULL) {
  * Recursive helper function to set the validated property. (Taken from the skip validation module.)
  *
  * TODO: DELETE
- * 
+ *
  * @param &$elements
  *   The elements that are currently being processed.
  */
@@ -2329,7 +2348,7 @@ function _quiz_skip_validation(&$elements) {
  * Helper function for theme_question_selection_table
  *
  * TODO: DELETE
- * 
+ *
  * @see quiz_questions_form()
  * @see theme_question_selection_table()
  *
@@ -2354,7 +2373,8 @@ function _quiz_get_question_row($sub_form, $id) {
     $type,
     $sub_form['view_links'][$id]['#markup'] . '<SPAN CLASS="q-remove" STYLE="display:none"> | ' . $sub_form['remove_links'][$id]['#markup'] . '</SPAN>',
     isset($sub_form['revision'][$id]) ? drupal_render($sub_form['revision'][$id]) : t("Up to date"),
-    drupal_render($sub_form['max_scores'][$id])
+    drupal_render($sub_form['max_scores'][$id]),
+    drupal_render($sub_form['auto_update_max_scores'][$id]),
   );
   if (isset($sub_form['compulsories'])) {
     $data_array[] = drupal_render($sub_form['compulsories'][$id]);
@@ -2371,7 +2391,7 @@ function _quiz_get_question_row($sub_form, $id) {
  * Finds and returns the last table rows(HTML) in a table(HTML)
  *
  * TODO: DELETE
- * 
+ *
  * @param $table
  *   HTML string with a table
  * @param $num_rows
@@ -2394,7 +2414,7 @@ function _quiz_get_last_table_rows($table, $num_rows = 1) {
  * Finds and returns all table rows with a certain class(HTML) in a table(HTML)
  *
  * TODO: DELETE
- * 
+ *
  * @param $table
  *   HTML string with a table
  * @return
@@ -2752,7 +2772,7 @@ function theme_quiz_categorized_form($variables) {
     $output .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'existing-terms')));
   }
   $output .= drupal_render_children($form);
-  drupal_add_js(  
+  drupal_add_js(
     "(function ($) {
      Drupal.behaviors.quiz_categorized = {
      attach: function(context) {
